@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Category, PaymentMethod, BALANCE_TYPE_LABELS, BalanceType, FinanceAccount } from '@/types';
-import { getCategories, createTransaction, getFinanceAccounts } from '@/lib/api';
+import { Category, PaymentMethod, BALANCE_TYPE_LABELS, BalanceType, FinanceAccount, Transaction } from '@/types';
+import { getCategories, createTransaction, updateTransaction, getFinanceAccounts } from '@/lib/api';
 import { Loader2, Delete, AlignLeft, Calendar, X, Check } from 'lucide-react';
 import { formatRupiah } from '@/lib/utils';
 import { useDialog } from '@/contexts/DialogContext';
@@ -10,6 +10,7 @@ import { useDialog } from '@/contexts/DialogContext';
 interface TransactionFormProps {
   onSuccess: () => void;
   onCancel: () => void;
+  transaction?: Transaction | null;
 }
 
 // Category icon mapping by name keywords
@@ -47,25 +48,34 @@ const PAYMENT_OPTIONS = [
   { value: 'cod', label: 'COD', emoji: '📦' },
 ];
 
-export function TransactionForm({ onSuccess, onCancel }: TransactionFormProps) {
+export function TransactionForm({ onSuccess, onCancel, transaction }: TransactionFormProps) {
+  const isEditing = !!transaction;
   const { showAlert } = useDialog();
   const [categories, setCategories] = useState<Category[]>([]);
   const [accounts, setAccounts] = useState<FinanceAccount[]>([]);
   const [loading, setLoading] = useState(false);
-  const [amountStr, setAmountStr] = useState('');
-  const [type, setType] = useState<'expense' | 'income'>('expense');
-  const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
-  const [selectedAccountId, setSelectedAccountId] = useState<number | null>(null);
-  const [description, setDescription] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash');
-  const [balanceType, setBalanceType] = useState<BalanceType>('personal');
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [amountStr, setAmountStr] = useState(transaction ? String(Math.round(parseFloat(transaction.amount))) : '');
+  const [type, setType] = useState<'expense' | 'income'>(transaction?.type || 'expense');
+  const [selectedCategory, setSelectedCategory] = useState<number | null>(transaction?.category || null);
+  const [selectedAccountId, setSelectedAccountId] = useState<number | null>(transaction?.finance_account || null);
+  const [description, setDescription] = useState(transaction?.description || '');
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>((transaction?.payment_method as PaymentMethod) || 'cash');
+  const [balanceType, setBalanceType] = useState<BalanceType>(transaction?.balance_type || 'personal');
+  const [date, setDate] = useState(transaction?.date || new Date().toISOString().split('T')[0]);
 
+  const [hasLoadedInitial, setHasLoadedInitial] = useState(false);
   useEffect(() => {
     getCategories(type).then((res) => {
       setCategories(res.data.results || res.data);
-      setSelectedCategory(null);
+      // Don't reset category on initial load when editing
+      if (!hasLoadedInitial && isEditing) {
+        setHasLoadedInitial(true);
+      } else {
+        setSelectedCategory(null);
+        setHasLoadedInitial(true);
+      }
     });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [type]);
 
   useEffect(() => {
@@ -97,7 +107,7 @@ export function TransactionForm({ onSuccess, onCancel }: TransactionFormProps) {
     }
     setLoading(true);
     try {
-      await createTransaction({
+      const payload = {
         type,
         category: selectedCategory,
         finance_account: selectedAccountId,
@@ -106,7 +116,12 @@ export function TransactionForm({ onSuccess, onCancel }: TransactionFormProps) {
         payment_method: paymentMethod,
         balance_type: balanceType,
         date,
-      });
+      };
+      if (isEditing) {
+        await updateTransaction(transaction.id, payload);
+      } else {
+        await createTransaction(payload);
+      }
       onSuccess();
     } catch (err) {
       console.error(err);
@@ -340,7 +355,7 @@ export function TransactionForm({ onSuccess, onCancel }: TransactionFormProps) {
         >
           {loading
             ? <><Loader2 size={18} className="animate-spin" /> Menyimpan...</>
-            : <><Check size={18} /> Simpan</>}
+            : <><Check size={18} /> {isEditing ? 'Perbarui' : 'Simpan'}</>}
         </button>
       </div>
     </div>

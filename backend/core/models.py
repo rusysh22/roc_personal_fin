@@ -122,11 +122,16 @@ class FinanceAccount(models.Model):
         ('investment', 'Investasi'),
         ('other', 'Lainnya'),
     ]
+    BALANCE_TYPES = [
+        ('personal', 'Pribadi'),
+        ('office', 'Lainnya'),
+    ]
 
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='finance_accounts')
     company = models.ForeignKey(Company, on_delete=models.CASCADE, null=True, blank=True, related_name='finance_accounts')
     name = models.CharField(max_length=100)
     type = models.CharField(max_length=20, choices=ACCOUNT_TYPES, default='bank')
+    balance_type = models.CharField(max_length=20, choices=BALANCE_TYPES, default='personal')
     initial_balance = models.DecimalField(max_digits=15, decimal_places=2, default=0)
     color = models.CharField(max_length=7, blank=True, default='#3b82f6')
     is_active = models.BooleanField(default=True)

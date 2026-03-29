@@ -627,12 +627,25 @@ def dashboard(request):
     accounts_qs = FinanceAccount.objects.filter(user=request.user, **get_company_filter_kwargs(request), is_active=True)
     accounts_data = FinanceAccountSerializer(accounts_qs, many=True).data
 
+    # Calculate total saldo from finance accounts (current_balance includes initial + transactions)
+    personal_account_balance = sum(
+        acc.current_balance for acc in accounts_qs if acc.balance_type == 'personal'
+    )
+    office_account_balance = sum(
+        acc.current_balance for acc in accounts_qs if acc.balance_type == 'office'
+    )
+    total_account_balance = personal_account_balance + office_account_balance
+
+    # Transaction-only balance for the selected month (without account initial balances)
+    tx_personal_balance = personal_income - personal_expense
+    tx_office_balance = office_income - office_expense
+
     return Response({
         'total_income': str(total_income),
         'total_expense': str(total_expense),
-        'balance': str(total_income - total_expense),
-        'personal_balance': str(personal_income - personal_expense),
-        'office_balance': str(office_income - office_expense),
+        'balance': str(total_account_balance if accounts_qs.exists() else total_income - total_expense),
+        'personal_balance': str(personal_account_balance if accounts_qs.filter(balance_type='personal').exists() else tx_personal_balance),
+        'office_balance': str(office_account_balance if accounts_qs.filter(balance_type='office').exists() else tx_office_balance),
         'accounts': accounts_data,
         'recent_transactions': TransactionSerializer(recent_transactions, many=True).data,
         'spending_by_category': spending_by_category,

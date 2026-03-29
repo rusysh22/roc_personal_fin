@@ -2,11 +2,15 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { getTransactions, deleteTransaction } from '@/lib/api';
-import { Transaction, PAYMENT_METHOD_LABELS, PaymentMethod } from '@/types';
+import { Transaction, PAYMENT_METHOD_LABELS, BALANCE_TYPE_LABELS, PaymentMethod, BalanceType } from '@/types';
 import { TransactionForm } from '@/components/transactions/TransactionForm';
 import { SwipeableRow } from '@/components/ui/SwipeableRow';
+import { Modal } from '@/components/ui/Modal';
 import { formatRupiah, formatDate } from '@/lib/utils';
-import { Plus, ArrowUpRight, ArrowDownRight, Receipt, SlidersHorizontal, X } from 'lucide-react';
+import {
+  Plus, ArrowUpRight, ArrowDownRight, Receipt, SlidersHorizontal, X,
+  Pencil, Calendar, CreditCard, Wallet, Tag, FileText, Building2
+} from 'lucide-react';
 
 const PAYMENT_ICONS: Record<string, string> = {
   cash: '💵',
@@ -17,10 +21,23 @@ const PAYMENT_ICONS: Record<string, string> = {
   cod: '📦',
 };
 
+// Payment methods that should show account name instead of generic label
+const ACCOUNT_BASED_METHODS = ['bank_transfer', 'e_wallet', 'paylater'];
+
+function getPaymentDisplay(tx: Transaction): string {
+  // If this is an account-based method AND has an account name, show that instead
+  if (ACCOUNT_BASED_METHODS.includes(tx.payment_method) && tx.finance_account_name) {
+    return tx.finance_account_name;
+  }
+  return PAYMENT_METHOD_LABELS[tx.payment_method as PaymentMethod] || tx.payment_method;
+}
+
 export default function TransactionsPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
+  const [detailTransaction, setDetailTransaction] = useState<Transaction | null>(null);
   const [showFilter, setShowFilter] = useState(false);
   const [filters, setFilters] = useState({ type: '', payment_method: '', balance_type: '' });
 
@@ -47,6 +64,21 @@ export default function TransactionsPage() {
     } catch (err) {
       console.error(err);
     }
+  };
+
+  const handleEdit = (tx: Transaction) => {
+    setEditingTransaction(tx);
+    setShowForm(true);
+  };
+
+  const handleFormClose = () => {
+    setShowForm(false);
+    setEditingTransaction(null);
+  };
+
+  const handleFormSuccess = () => {
+    handleFormClose();
+    fetchTransactions();
   };
 
   const activeFilterCount = [filters.type, filters.payment_method, filters.balance_type].filter(Boolean).length;
@@ -191,9 +223,10 @@ export default function TransactionsPage() {
               {transactions.map((tx) => (
                 <SwipeableRow key={tx.id} onDelete={() => handleDelete(tx.id)}>
                   <div
-                    className="flex items-center gap-3 px-4 py-3.5"
+                    className="flex items-center gap-3 px-4 py-3.5 cursor-pointer active:bg-black/[0.03] dark:active:bg-white/[0.03] transition-colors"
                     role="listitem"
                     style={{ borderBottom: '1px solid var(--color-divider)' }}
+                    onClick={() => setDetailTransaction(tx)}
                   >
                     <div className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 ${
                       tx.type === 'income' ? 'bg-[var(--color-income-soft)]' : 'bg-[var(--color-expense-soft)]'
@@ -210,7 +243,7 @@ export default function TransactionsPage() {
                         </span>
                         <span style={{ color: 'var(--color-text-muted)' }}>·</span>
                         <span className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>
-                          {PAYMENT_ICONS[tx.payment_method] || ''} {PAYMENT_METHOD_LABELS[tx.payment_method as PaymentMethod]}
+                          {PAYMENT_ICONS[tx.payment_method] || ''} {getPaymentDisplay(tx)}
                         </span>
                         <span style={{ color: 'var(--color-text-muted)' }}>·</span>
                         <span className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>{formatDate(tx.date)}</span>
@@ -238,7 +271,7 @@ export default function TransactionsPage() {
       </div>
 
       {/* FAB */}
-      <button onClick={() => setShowForm(true)} className="fab" aria-label="Tambah transaksi">
+      <button onClick={() => { setEditingTransaction(null); setShowForm(true); }} className="fab" aria-label="Tambah transaksi">
         <Plus size={22} />
       </button>
 
@@ -246,11 +279,130 @@ export default function TransactionsPage() {
       {showForm && (
         <div className="fullpage-overlay">
           <TransactionForm
-            onSuccess={() => { setShowForm(false); fetchTransactions(); }}
-            onCancel={() => setShowForm(false)}
+            transaction={editingTransaction}
+            onSuccess={handleFormSuccess}
+            onCancel={handleFormClose}
           />
         </div>
       )}
+
+      {/* Transaction Detail Modal */}
+      <Modal
+        isOpen={!!detailTransaction}
+        onClose={() => setDetailTransaction(null)}
+        title="Detail Transaksi"
+      >
+        {detailTransaction && (
+          <TransactionDetail
+            transaction={detailTransaction}
+            onEdit={() => {
+              const tx = detailTransaction;
+              setDetailTransaction(null);
+              handleEdit(tx);
+            }}
+          />
+        )}
+      </Modal>
+    </div>
+  );
+}
+
+function TransactionDetail({ transaction: tx, onEdit }: { transaction: Transaction; onEdit: () => void }) {
+  const isIncome = tx.type === 'income';
+
+  return (
+    <div className="space-y-4">
+      {/* Amount highlight */}
+      <div
+        className="flex items-center gap-3 p-4 rounded-2xl"
+        style={{
+          background: isIncome ? 'var(--color-income-soft)' : 'var(--color-expense-soft)',
+        }}
+      >
+        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${
+          isIncome ? 'bg-[var(--color-income)]' : 'bg-[var(--color-expense)]'
+        }`}>
+          {isIncome
+            ? <ArrowUpRight size={22} className="text-white" />
+            : <ArrowDownRight size={22} className="text-white" />}
+        </div>
+        <div className="flex-1">
+          <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--color-text-muted)' }}>
+            {isIncome ? 'Pemasukan' : 'Pengeluaran'}
+          </p>
+          <p className={`text-xl font-extrabold ${
+            isIncome ? 'text-[var(--color-income)]' : 'text-[var(--color-expense)]'
+          }`}>
+            {isIncome ? '+' : '-'}{formatRupiah(tx.amount)}
+          </p>
+        </div>
+      </div>
+
+      {/* Detail rows */}
+      <div className="space-y-0.5">
+        <DetailRow
+          icon={<FileText size={15} />}
+          label="Deskripsi"
+          value={tx.description}
+        />
+        <DetailRow
+          icon={<Tag size={15} />}
+          label="Kategori"
+          value={tx.category_name || 'Tidak ada kategori'}
+        />
+        <DetailRow
+          icon={<CreditCard size={15} />}
+          label="Metode Pembayaran"
+          value={`${PAYMENT_ICONS[tx.payment_method] || ''} ${PAYMENT_METHOD_LABELS[tx.payment_method as PaymentMethod] || tx.payment_method}`}
+        />
+        {tx.finance_account_name && (
+          <DetailRow
+            icon={<Building2 size={15} />}
+            label="Akun"
+            value={tx.finance_account_name}
+          />
+        )}
+        <DetailRow
+          icon={<Wallet size={15} />}
+          label="Tipe Saldo"
+          value={tx.balance_type === 'personal' ? '👤 Pribadi' : '🏢 ' + (BALANCE_TYPE_LABELS[tx.balance_type as BalanceType] || tx.balance_type)}
+        />
+        <DetailRow
+          icon={<Calendar size={15} />}
+          label="Tanggal"
+          value={formatDate(tx.date)}
+        />
+      </div>
+
+      {/* Edit button */}
+      <button
+        onClick={onEdit}
+        className="w-full py-3 rounded-2xl text-sm font-bold text-white flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
+        style={{
+          background: 'linear-gradient(135deg, var(--color-primary-dark), var(--color-primary))',
+          boxShadow: '0 6px 20px rgba(13, 148, 136, 0.3)',
+        }}
+      >
+        <Pencil size={15} />
+        Edit Transaksi
+      </button>
+    </div>
+  );
+}
+
+function DetailRow({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
+  return (
+    <div className="flex items-center gap-3 py-3" style={{ borderBottom: '1px solid var(--color-divider)' }}>
+      <div
+        className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+        style={{ background: 'var(--color-filter-bg)', color: 'var(--color-text-muted)' }}
+      >
+        {icon}
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: 'var(--color-text-muted)' }}>{label}</p>
+        <p className="text-sm font-medium mt-0.5" style={{ color: 'var(--color-text-primary)' }}>{value}</p>
+      </div>
     </div>
   );
 }

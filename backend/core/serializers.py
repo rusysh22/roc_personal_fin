@@ -58,7 +58,7 @@ class FinanceAccountSerializer(serializers.ModelSerializer):
     class Meta:
         model = FinanceAccount
         fields = [
-            'id', 'name', 'type', 'initial_balance', 'current_balance',
+            'id', 'name', 'type', 'balance_type', 'initial_balance', 'current_balance',
             'color', 'is_active', 'created_at', 'updated_at'
         ]
         read_only_fields = ['created_at', 'updated_at']

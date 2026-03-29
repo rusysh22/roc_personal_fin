@@ -78,6 +78,7 @@ export interface FinanceAccount {
   id: number;
   name: string;
   type: 'bank' | 'e_wallet' | 'cash' | 'investment' | 'other';
+  balance_type: 'personal' | 'office';
   initial_balance: string;
   current_balance: string;
   color: string;

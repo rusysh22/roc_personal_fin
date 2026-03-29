@@ -324,6 +324,7 @@ export default function DashboardPage() {
                     <h4 className="text-sm font-bold" style={{ color: 'var(--color-text-card-title)' }}>{acc.name}</h4>
                     <p className="text-[11px] uppercase tracking-wider font-semibold" style={{ color: 'var(--color-text-muted)' }}>
                       {acc.type === 'bank' ? 'Bank' : acc.type === 'cash' ? 'Tunai' : acc.type === 'e_wallet' ? 'E-Wallet' : 'Lainnya'}
+                      {acc.balance_type && <span> · {acc.balance_type === 'personal' ? 'Pribadi' : 'Lainnya'}</span>}
                     </p>
                   </div>
                 </div>

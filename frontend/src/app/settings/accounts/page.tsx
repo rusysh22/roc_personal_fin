@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { ArrowLeft, Plus, Landmark, Loader2, Trash2, Check, Pencil } from 'lucide-react';
 import { getFinanceAccounts, createFinanceAccount, updateFinanceAccount, deleteFinanceAccount } from '@/lib/api';
 import { CurrencyInput } from '@/components/ui/CurrencyInput';
-import { FinanceAccount, FINANCE_ACCOUNT_TYPE_LABELS, FinanceAccountType } from '@/types';
+import { FinanceAccount, FINANCE_ACCOUNT_TYPE_LABELS, FinanceAccountType, BALANCE_TYPE_LABELS, BalanceType } from '@/types';
 import { formatRupiah } from '@/lib/utils';
 
 const ACCOUNT_COLORS = ['#3b82f6', '#f59e0b', '#10b981', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#64748b'];
@@ -17,7 +17,7 @@ export default function AccountsPage() {
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({ name: '', type: 'bank' as FinanceAccountType, initial_balance: '', color: '#3b82f6' });
+  const [form, setForm] = useState({ name: '', type: 'bank' as FinanceAccountType, balance_type: 'personal' as BalanceType, initial_balance: '', color: '#3b82f6' });
   const [deletingId, setDeletingId] = useState<number | null>(null);
 
   const loadAccounts = () => {
@@ -39,7 +39,7 @@ export default function AccountsPage() {
   useEffect(() => { loadAccounts(); }, []);
 
   const resetForm = () => {
-    setForm({ name: '', type: 'bank', initial_balance: '', color: '#3b82f6' });
+    setForm({ name: '', type: 'bank', balance_type: 'personal', initial_balance: '', color: '#3b82f6' });
     setEditId(null);
     setShowForm(false);
   };
@@ -47,6 +47,7 @@ export default function AccountsPage() {
   const openEdit = (account: FinanceAccount) => {
     setForm({
       name: account.name, type: account.type,
+      balance_type: account.balance_type || 'personal',
       initial_balance: account.initial_balance,
       color: account.color,
     });
@@ -60,6 +61,7 @@ export default function AccountsPage() {
     try {
       const payload = {
         name: form.name, type: form.type,
+        balance_type: form.balance_type,
         initial_balance: form.initial_balance || '0',
         color: form.color,
       };
@@ -105,6 +107,21 @@ export default function AccountsPage() {
                           ? { background: 'var(--color-primary)', color: 'white' }
                           : { background: 'var(--color-filter-bg)', color: 'var(--color-filter-text)' }
                         }>{label}</button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <label className="text-[11px] font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--color-text-muted)' }}>Tipe Saldo</label>
+                  <div className="flex gap-2">
+                    {(Object.entries(BALANCE_TYPE_LABELS) as [BalanceType, string][]).map(([key, label]) => (
+                      <button key={key} onClick={() => setForm({ ...form, balance_type: key })}
+                        className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all"
+                        style={form.balance_type === key
+                          ? { background: 'var(--color-primary)', color: 'white' }
+                          : { background: 'var(--color-filter-bg)', color: 'var(--color-filter-text)' }
+                        }>
+                        {key === 'personal' ? '👤' : '🏢'} {label}
+                      </button>
                     ))}
                   </div>
                 </div>
@@ -189,7 +206,7 @@ export default function AccountsPage() {
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-bold truncate" style={{ color: 'var(--color-text-primary)' }}>{acc.name}</p>
                       <p className="text-[11px]" style={{ color: 'var(--color-text-muted)' }}>
-                        {FINANCE_ACCOUNT_TYPE_LABELS[acc.type]}
+                        {FINANCE_ACCOUNT_TYPE_LABELS[acc.type]} · {acc.balance_type === 'personal' ? '👤 Pribadi' : '🏢 Lainnya'}
                       </p>
                     </div>
                     <div className="text-right">
