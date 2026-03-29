@@ -8,7 +8,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-change-me')
 DEBUG = os.getenv('DEBUG', 'True') == 'True'
-ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
+ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1,rusydani-niken.vercel.app,.vercel.app','rusydani-niken.roc.web.id','niken.rusydani.my.id','server-niken.rusydani.my.id').split(',')
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -100,6 +100,7 @@ MEDIA_ROOT = BASE_DIR / 'media'
 # CORS
 CORS_ALLOWED_ORIGINS = [
     'http://localhost:3000',
+    'https://rusydani-niken.vercel.app',
 ]
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_HEADERS = [
@@ -125,6 +126,7 @@ REST_FRAMEWORK = {
 # Disable CSRF for API (frontend is separate origin)
 CSRF_TRUSTED_ORIGINS = [
     'http://localhost:3000',
+    'https://rusydani-niken.vercel.app',
 ]
 
 # Email settings (console backend for development)
