@@ -130,17 +130,17 @@ export default function DashboardPage() {
               <h1 className="text-sm font-bold text-white truncate max-w-[140px]">{user?.first_name || user?.username || 'User'}</h1>
             </div>
           </div>
-          
+
           <div className="max-w-[180px]">
             <label className="sr-only">Pilih Ruang Kerja</label>
             <SearchableSelect
               options={[
-                { value: '', label: 'Personal (Pribadi)', icon: '👤' },
+                { value: '', label: 'Personal', icon: '👤' },
                 ...companies.map(c => ({ value: String(c.id), label: c.name, icon: '🏢' })),
               ]}
               value={activeCompanyId}
               onChange={handleCompanyChange}
-              placeholder="Personal (Pribadi)"
+              placeholder="Personal"
               searchPlaceholder="Cari perusahaan..."
               className="!bg-white/15 !backdrop-blur-md !border-white/20 !text-white !text-xs !py-2 !rounded-2xl"
             />
@@ -284,9 +284,8 @@ export default function DashboardPage() {
             <div role="list">
               {data.recent_transactions.map((tx) => (
                 <div key={tx.id} className="flex items-center gap-3 px-4 py-3" role="listitem" style={{ borderTop: '1px solid var(--color-divider)' }}>
-                  <div className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 ${
-                    tx.type === 'income' ? 'bg-[var(--color-income-soft)]' : 'bg-[var(--color-expense-soft)]'
-                  }`}>
+                  <div className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 ${tx.type === 'income' ? 'bg-[var(--color-income-soft)]' : 'bg-[var(--color-expense-soft)]'
+                    }`}>
                     {tx.type === 'income'
                       ? <ArrowUpRight size={17} className="text-[var(--color-income)]" />
                       : <ArrowDownRight size={17} className="text-[var(--color-expense)]" />}
@@ -295,9 +294,8 @@ export default function DashboardPage() {
                     <p className="text-sm font-semibold truncate" style={{ color: 'var(--color-text-card-title)' }}>{tx.description}</p>
                     <p className="text-[11px]" style={{ color: 'var(--color-text-muted)' }}>{tx.category_name || 'Tanpa Kategori'} &middot; {formatDate(tx.date)}</p>
                   </div>
-                  <p className={`text-sm font-bold whitespace-nowrap ${
-                    tx.type === 'income' ? 'text-[var(--color-income)]' : 'text-[var(--color-expense)]'
-                  }`}>
+                  <p className={`text-sm font-bold whitespace-nowrap ${tx.type === 'income' ? 'text-[var(--color-income)]' : 'text-[var(--color-expense)]'
+                    }`}>
                     {tx.type === 'income' ? '+' : '-'}{formatRupiah(tx.amount)}
                   </p>
                 </div>
@@ -335,11 +333,11 @@ export default function DashboardPage() {
               </div>
             ))
           ) : (
-             <div className="flex flex-col items-center justify-center p-6 text-center">
+            <div className="flex flex-col items-center justify-center p-6 text-center">
               <Wallet size={24} className="text-slate-300 mb-2" />
               <p className="text-sm text-slate-500 font-semibold">Belum ada Master Akun / Bank</p>
               <p className="text-xs text-slate-400 mt-1">Tambahkan di menu Profil &gt; Kelola Master Akun / Bank</p>
-             </div>
+            </div>
           )}
         </div>
       </Modal>
