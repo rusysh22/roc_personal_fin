@@ -108,6 +108,12 @@ export default function ProfilePage() {
 
       const res = await updateProfile(payload);
 
+      // If password was changed, backend returns new tokens
+      if (res.data.access_token) {
+        localStorage.setItem('access_token', res.data.access_token);
+        localStorage.setItem('refresh_token', res.data.refresh_token);
+      }
+
       // Update context
       setUser(res.data);
 

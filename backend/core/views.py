@@ -5,7 +5,7 @@ from datetime import date, timedelta
 from decimal import Decimal
 from io import StringIO
 
-from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth import authenticate
 from django.contrib.auth.models import User
 from django.core.mail import send_mail
 from django.conf import settings
@@ -14,18 +14,14 @@ from django.db.models.functions import TruncMonth
 from django.http import HttpResponse
 from django.utils import timezone
 from rest_framework import viewsets, status
-from rest_framework.authentication import SessionAuthentication
 from rest_framework.decorators import api_view, authentication_classes, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
-
-class CsrfExemptSessionAuth(SessionAuthentication):
-    def enforce_csrf(self, request):
-        return  # Skip CSRF check for API
+from .authentication import JWTAuthentication, generate_access_token, generate_refresh_token, decode_token
 
 
-API_AUTH = [CsrfExemptSessionAuth]
+API_AUTH = [JWTAuthentication]
 
 from .models import Category, Transaction, Budget, PasswordResetOTP, UserSettings, Debt, SavingsGoal, FinanceAccount, Company, CompanyMember, Note, NoteCategory, Plan, PlanCategory, PlanSubCategory
 from .serializers import (
@@ -177,7 +173,7 @@ class FinanceAccountViewSet(viewsets.ModelViewSet):
 # ==================== AUTH VIEWS ====================
 
 @api_view(['POST'])
-@authentication_classes([CsrfExemptSessionAuth])
+@authentication_classes([])
 @permission_classes([AllowAny])
 def auth_login(request):
     username = request.data.get('username', '').strip()
@@ -190,13 +186,16 @@ def auth_login(request):
     if user is None:
         return Response({'error': 'Username atau password salah'}, status=401)
 
-    login(request, user)
     serializer = UserSerializer(user, context={'request': request})
-    return Response(serializer.data)
+    return Response({
+        'user': serializer.data,
+        'access_token': generate_access_token(user),
+        'refresh_token': generate_refresh_token(user),
+    })
 
 
 @api_view(['POST'])
-@authentication_classes([CsrfExemptSessionAuth])
+@authentication_classes([])
 @permission_classes([AllowAny])
 def auth_register(request):
     username = request.data.get('username', '').strip()
@@ -226,9 +225,12 @@ def auth_register(request):
     # Create default categories for new user
     _seed_default_categories(user)
 
-    login(request, user)
     serializer = UserSerializer(user, context={'request': request})
-    return Response(serializer.data, status=201)
+    return Response({
+        'user': serializer.data,
+        'access_token': generate_access_token(user),
+        'refresh_token': generate_refresh_token(user),
+    }, status=201)
 
 
 def _seed_default_categories(user):
@@ -262,7 +264,7 @@ def _seed_default_categories(user):
 @api_view(['POST'])
 @authentication_classes(API_AUTH)
 def auth_logout(request):
-    logout(request)
+    # JWT is stateless — client just discards the token
     return Response({'message': 'Berhasil logout'})
 
 
@@ -318,16 +320,19 @@ def auth_update_profile(request):
         settings_obj.profile_photo = request.FILES['profile_photo']
         settings_obj.save()
 
-    # Re-login if password changed (to refresh session)
-    if new_password:
-        login(request, user)
-
     serializer = UserSerializer(user, context={'request': request})
-    return Response(serializer.data)
+    data = serializer.data
+
+    # If password changed, return new tokens (old ones are invalidated by timing)
+    if new_password:
+        data['access_token'] = generate_access_token(user)
+        data['refresh_token'] = generate_refresh_token(user)
+
+    return Response(data)
 
 
 @api_view(['POST'])
-@authentication_classes([CsrfExemptSessionAuth])
+@authentication_classes([])
 @permission_classes([AllowAny])
 def auth_forgot_password(request):
     email = request.data.get('email', '').strip()
@@ -365,7 +370,7 @@ def auth_forgot_password(request):
 
 
 @api_view(['POST'])
-@authentication_classes([CsrfExemptSessionAuth])
+@authentication_classes([])
 @permission_classes([AllowAny])
 def auth_verify_otp(request):
     email = request.data.get('email', '').strip()
@@ -390,7 +395,7 @@ def auth_verify_otp(request):
 
 
 @api_view(['POST'])
-@authentication_classes([CsrfExemptSessionAuth])
+@authentication_classes([])
 @permission_classes([AllowAny])
 def auth_reset_password(request):
     email = request.data.get('email', '').strip()
@@ -428,6 +433,33 @@ def auth_reset_password(request):
     otp.save()
 
     return Response({'message': 'Password berhasil direset'})
+
+
+@api_view(['POST'])
+@authentication_classes([])
+@permission_classes([AllowAny])
+def auth_refresh_token(request):
+    refresh_token = request.data.get('refresh_token', '')
+    if not refresh_token:
+        return Response({'error': 'Refresh token wajib diisi'}, status=400)
+
+    try:
+        payload = decode_token(refresh_token)
+    except Exception:
+        return Response({'error': 'Refresh token tidak valid atau sudah kedaluwarsa'}, status=401)
+
+    if payload.get('type') != 'refresh':
+        return Response({'error': 'Token type tidak valid'}, status=401)
+
+    try:
+        user = User.objects.get(id=payload['user_id'])
+    except User.DoesNotExist:
+        return Response({'error': 'User tidak ditemukan'}, status=401)
+
+    return Response({
+        'access_token': generate_access_token(user),
+        'refresh_token': generate_refresh_token(user),
+    })
 
 
 def get_company_filter_kwargs(request):

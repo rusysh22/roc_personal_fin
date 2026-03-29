@@ -26,12 +26,14 @@ export default function RegisterPage() {
 
     setLoading(true);
     try {
-      await authRegister({
+      const res = await authRegister({
         username: form.username,
         email: form.email,
         password: form.password,
         first_name: form.first_name,
       });
+      localStorage.setItem('access_token', res.data.access_token);
+      localStorage.setItem('refresh_token', res.data.refresh_token);
       await checkAuth();
       router.push('/');
     } catch (err: any) {

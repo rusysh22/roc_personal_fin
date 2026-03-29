@@ -99,7 +99,7 @@ export function SearchableSelect({
       {/* Dropdown Overlay */}
       {isOpen && (
         <div
-          className="fixed inset-0 z-[250] flex items-end sm:items-center justify-center p-0 sm:p-4"
+          className="fixed inset-0 z-[1100] flex items-end sm:items-center justify-center p-0 sm:p-4"
           style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }}
           onClick={() => setIsOpen(false)}
         >

@@ -29,6 +29,7 @@ urlpatterns = [
     path('auth/forgot-password/', views.auth_forgot_password, name='auth-forgot-password'),
     path('auth/verify-otp/', views.auth_verify_otp, name='auth-verify-otp'),
     path('auth/reset-password/', views.auth_reset_password, name='auth-reset-password'),
+    path('auth/refresh/', views.auth_refresh_token, name='auth-refresh-token'),
     # Settings
     path('settings/', views.user_settings_view, name='user-settings'),
     # Export

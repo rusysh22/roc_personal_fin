@@ -33,11 +33,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   const checkAuth = useCallback(async () => {
+    const token = localStorage.getItem('access_token');
+    if (!token) {
+      setUser(null);
+      setLoading(false);
+      return;
+    }
     try {
       const res = await authMe();
       setUser(res.data);
     } catch {
       setUser(null);
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('refresh_token');
     } finally {
       setLoading(false);
     }
@@ -50,6 +58,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // ignore
     }
     setUser(null);
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('refresh_token');
   }, []);
 
   useEffect(() => {

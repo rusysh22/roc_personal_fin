@@ -19,6 +19,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'corsheaders',
+    'storages',
     'core',
 ]
 
@@ -91,17 +92,19 @@ STORAGES = {
     },
 }
 
-# Production Storage (Supabase S3)
-if not DEBUG:
-    AWS_ACCESS_KEY_ID = os.getenv('SUPABASE_S3_ACCESS_KEY')
-    AWS_SECRET_ACCESS_KEY = os.getenv('SUPABASE_S3_SECRET_KEY')
+# Production Storage (Supabase S3) — activate when S3 env vars are available
+_s3_access_key = os.getenv('SUPABASE_S3_ACCESS_KEY')
+_s3_secret_key = os.getenv('SUPABASE_S3_SECRET_KEY')
+if _s3_access_key and _s3_secret_key:
+    AWS_ACCESS_KEY_ID = _s3_access_key
+    AWS_SECRET_ACCESS_KEY = _s3_secret_key
     AWS_STORAGE_BUCKET_NAME = os.getenv('SUPABASE_S3_BUCKET', 'photo-profile')
     AWS_S3_ENDPOINT_URL = os.getenv('SUPABASE_S3_ENDPOINT')
     AWS_S3_REGION_NAME = os.getenv('AWS_S3_REGION_NAME', 'ap-southeast-1')
     AWS_S3_FILE_OVERWRITE = False
     AWS_S3_VERIFY = True
     AWS_QUERYSTRING_AUTH = False  # Public bucket
-    
+
     STORAGES["default"] = {
         "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
     }
@@ -128,15 +131,15 @@ CORS_ALLOW_HEADERS = [
 # DRF
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework.authentication.SessionAuthentication',
+        'core.authentication.JWTAuthentication',
+    ],
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',
     ],
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 20,
     'DATETIME_FORMAT': '%Y-%m-%dT%H:%M:%S%z',
 }
-
-# Disable CSRF for API (frontend is separate origin)
-CSRF_TRUSTED_ORIGINS = os.getenv('CSRF_TRUSTED_ORIGINS', 'http://localhost:3000,https://rusydani-niken.vercel.app,https://niken.rusydani.my.id,https://rusydani-niken.roc.web.id,https://server-niken.rusydani.my.id').split(',')
 
 # Email settings (console backend for development)
 EMAIL_BACKEND = os.getenv('EMAIL_BACKEND', 'django.core.mail.backends.console.EmailBackend')
@@ -146,13 +149,3 @@ EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'True') == 'True'
 EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', '')
 EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
 DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'noreply@fintracker.app')
-
-# Session and Cookie settings for Cross-Domain Support
-SESSION_COOKIE_AGE = 60 * 60 * 24 * 30  # 30 days
-SESSION_SAVE_EVERY_REQUEST = True
-SESSION_COOKIE_SAMESITE = 'None'
-SESSION_COOKIE_SECURE = True
-CSRF_COOKIE_SAMESITE = 'None'
-CSRF_COOKIE_SECURE = True
-SESSION_COOKIE_HTTPONLY = True
-CSRF_COOKIE_HTTPONLY = False  # Frontend needs to read CSRF cookie if used
