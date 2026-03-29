@@ -1,0 +1,17 @@
+{
+  "name": "Rusydani Niken - Couple Management",
+  "short_name": "RN Apps",
+  "description": "Aplikasi manajemen financial dan hubungan untuk pasangan",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f0fdfa",
+  "theme_color": "#0d9488",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/icon-rn.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
