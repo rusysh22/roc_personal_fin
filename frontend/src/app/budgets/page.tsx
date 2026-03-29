@@ -279,12 +279,12 @@ export default function BudgetsPage() {
           <div className="animate-slide-up">
             {/* Month navigator */}
             <div className="flex items-center justify-between bg-[var(--color-bg-card)] rounded-2xl p-2.5 border border-[var(--color-border-card)] shadow-xs mb-4">
-              <button onClick={prevMonth} className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center touch-feedback">
-                <ChevronLeft size={20} className="text-slate-500" />
+              <button onClick={prevMonth} className="w-10 h-10 rounded-xl flex items-center justify-center touch-feedback" style={{ background: 'var(--color-filter-bg)' }}>
+                <ChevronLeft size={20} style={{ color: 'var(--color-text-secondary)' }} />
               </button>
               <span className="text-sm font-bold" style={{ color: 'var(--color-text-card-title)' }}>{monthLabel}</span>
-              <button onClick={nextMonth} className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center touch-feedback">
-                <ChevronRight size={20} className="text-slate-500" />
+              <button onClick={nextMonth} className="w-10 h-10 rounded-xl flex items-center justify-center touch-feedback" style={{ background: 'var(--color-filter-bg)' }}>
+                <ChevronRight size={20} style={{ color: 'var(--color-text-secondary)' }} />
               </button>
             </div>
 
@@ -329,7 +329,7 @@ export default function BudgetsPage() {
 
                   return (
                     <div key={budget.id} className="mobile-card p-4 flex flex-col gap-3">
-                      <div className="flex items-center justify-between pb-3 border-b border-gray-100 dark:border-gray-800">
+                      <div className="flex items-center justify-between pb-3 border-b" style={{ borderColor: 'var(--color-divider)' }}>
                         <div className="flex items-center gap-3">
                           <div className={`w-9 h-9 rounded-2xl bg-gradient-to-br ${barGradient} flex items-center justify-center shadow-sm`}>
                             {isOver || isWarning
@@ -340,7 +340,7 @@ export default function BudgetsPage() {
                             <p className="text-sm font-bold" style={{ color: 'var(--color-text-card-title)' }}>{budget.category_name}</p>
                           </div>
                         </div>
-                        <button onClick={() => openEditBudget(budget)} className="p-1.5 rounded-lg touch-feedback bg-slate-50 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors">
+                        <button onClick={() => openEditBudget(budget)} className="p-1.5 rounded-lg touch-feedback transition-colors" style={{ background: 'var(--color-filter-bg)', color: 'var(--color-text-muted)' }}>
                           <Edit3 size={14} />
                         </button>
                       </div>
@@ -348,8 +348,8 @@ export default function BudgetsPage() {
                       {/* Monthly Progress */}
                       <div>
                         <div className="flex items-center justify-between mb-1.5">
-                          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Plafon Bulanan</p>
-                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-600">{pct.toFixed(0)}%</span>
+                          <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: 'var(--color-text-muted)' }}>Plafon Bulanan</p>
+                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded" style={{ background: 'var(--color-filter-bg)', color: 'var(--color-text-secondary)' }}>{pct.toFixed(0)}%</span>
                         </div>
                         <div className="w-full rounded-full h-1.5 overflow-hidden mb-1.5" style={{ background: 'var(--color-filter-bg)' }}>
                           <div className={`h-1.5 rounded-full bg-gradient-to-r ${barGradient} transition-all duration-700`} style={{ width: `${Math.min(pct, 100)}%` }} />
@@ -363,8 +363,8 @@ export default function BudgetsPage() {
                       {/* Daily Progress */}
                       <div className="pt-2">
                         <div className="flex items-center justify-between mb-1.5">
-                          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Target Harian</p>
-                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-600">{dPct.toFixed(0)}%</span>
+                          <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: 'var(--color-text-muted)' }}>Target Harian</p>
+                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded" style={{ background: 'var(--color-filter-bg)', color: 'var(--color-text-secondary)' }}>{dPct.toFixed(0)}%</span>
                         </div>
                         <div className="w-full rounded-full h-1.5 overflow-hidden mb-1.5" style={{ background: 'var(--color-filter-bg)' }}>
                           <div className={`h-1.5 rounded-full bg-gradient-to-r ${dBarGradient} transition-all duration-700`} style={{ width: `${Math.min(dPct, 100)}%` }} />
@@ -380,10 +380,10 @@ export default function BudgetsPage() {
               </div>
             ) : (
               <div className="mobile-card p-8 flex flex-col items-center gap-3 mt-4">
-                <div className="w-14 h-14 rounded-3xl bg-teal-50 flex items-center justify-center">
+                <div className="w-14 h-14 rounded-3xl bg-teal-50 dark:bg-teal-500/10 flex items-center justify-center">
                   <PiggyBank className="text-teal-300" size={26} />
                 </div>
-                <p className="text-sm font-medium text-slate-500">Belum ada budget bulan ini</p>
+                <p className="text-sm font-medium" style={{ color: 'var(--color-text-secondary)' }}>Belum ada budget bulan ini</p>
               </div>
             )}
           </div>
@@ -423,23 +423,24 @@ export default function BudgetsPage() {
                           <div key={subCat || `null-${sIdx}`} className="mobile-card overflow-hidden">
                             {subCat && (
                               <div className="px-4 py-2.5 bg-black/5 flex items-center gap-2 border-b" style={{ borderColor: 'var(--color-border-card)' }}>
-                                <ListTodo size={14} className="text-slate-500" />
+                                <ListTodo size={14} style={{ color: 'var(--color-text-secondary)' }} />
                                 <h3 className="text-[11px] font-bold" style={{ color: 'var(--color-text-secondary)' }}>{subCat}</h3>
                               </div>
                             )}
                             <div className="divide-y" style={{ borderColor: 'var(--color-divider)' }}>
                               {items.map(p => (
-                                <div key={p.id} className={`p-4 transition-colors ${p.is_realized ? 'bg-emerald-50/50' : ''}`}>
+                                <div key={p.id} className={`p-4 transition-colors ${p.is_realized ? 'bg-emerald-50/50 dark:bg-emerald-500/5' : ''}`}>
                                   <div className="flex items-start justify-between gap-3">
                                     <div className="flex-1">
                                       <div className="flex items-center gap-2 mb-1">
                                         <button 
                                           onClick={() => handleTogglePlanTarget(p.id, p.is_realized)}
-                                          className={`w-5 h-5 rounded-md flex items-center justify-center shrink-0 border ${p.is_realized ? 'bg-emerald-500 border-emerald-500' : 'bg-transparent border-slate-300'}`}
+                                          className={`w-5 h-5 rounded-md flex items-center justify-center shrink-0 border ${p.is_realized ? 'bg-emerald-500 border-emerald-500' : 'bg-transparent'}`}
+                                          style={!p.is_realized ? { borderColor: 'var(--color-border-input)' } : {}}
                                         >
                                           {p.is_realized && <CheckCircle2 size={12} className="text-white" />}
                                         </button>
-                                        <p className={`text-sm font-bold ${p.is_realized ? 'text-slate-400 line-through' : ''}`} style={{ color: p.is_realized ? undefined : 'var(--color-text-card-title)' }}>
+                                        <p className={`text-sm font-bold ${p.is_realized ? 'line-through' : ''}`} style={{ color: p.is_realized ? 'var(--color-text-muted)' : 'var(--color-text-card-title)' }}>
                                           {p.item_name}
                                         </p>
                                       </div>
@@ -451,7 +452,7 @@ export default function BudgetsPage() {
                                         </p>
                                       </div>
                                     </div>
-                                    <button onClick={() => openEditPlan(p)} className="p-2 bg-slate-100 rounded-xl touch-feedback text-slate-500">
+                                    <button onClick={() => openEditPlan(p)} className="p-2 rounded-xl touch-feedback" style={{ background: 'var(--color-filter-bg)', color: 'var(--color-text-secondary)' }}>
                                       <Edit3 size={14} />
                                     </button>
                                   </div>
@@ -467,10 +468,10 @@ export default function BudgetsPage() {
               </div>
             ) : (
               <div className="mobile-card p-8 flex flex-col items-center gap-3">
-                <div className="w-14 h-14 rounded-3xl bg-indigo-50 flex items-center justify-center">
+                <div className="w-14 h-14 rounded-3xl bg-indigo-50 dark:bg-indigo-500/10 flex items-center justify-center">
                   <Target className="text-indigo-400" size={26} />
                 </div>
-                <p className="text-sm font-medium text-slate-500">Belum ada Planning Manajemen</p>
+                <p className="text-sm font-medium" style={{ color: 'var(--color-text-secondary)' }}>Belum ada Planning Manajemen</p>
                 <p className="text-xs text-center" style={{ color: 'var(--color-text-muted)' }}>Buat plan masa depanmu sekarang juga!</p>
               </div>
             )}
@@ -517,7 +518,7 @@ export default function BudgetsPage() {
           
           {budgetForm.id && (
             <div className="flex justify-start">
-              <button type="button" onClick={() => { setShowBudgetForm(false); handleDeleteBudget(budgetForm.id!); }} className="text-xs font-bold text-rose-500 flex items-center gap-1 p-2 bg-rose-50 rounded-lg">
+              <button type="button" onClick={() => { setShowBudgetForm(false); handleDeleteBudget(budgetForm.id!); }} className="text-xs font-bold text-rose-500 flex items-center gap-1 p-2 bg-rose-50 dark:bg-rose-500/10 rounded-lg">
                 <Trash2 size={13} /> Hapus Budget ini
               </button>
             </div>

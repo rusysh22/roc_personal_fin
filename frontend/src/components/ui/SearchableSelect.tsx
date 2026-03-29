@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { Search, ChevronDown, Check, X } from 'lucide-react';
 
 export interface SelectOption {
@@ -96,8 +97,8 @@ export function SearchableSelect({
         <ChevronDown size={16} className="shrink-0" style={{ color: 'var(--color-text-muted)' }} />
       </button>
 
-      {/* Dropdown Overlay */}
-      {isOpen && (
+      {/* Dropdown Overlay — rendered via portal to escape stacking context */}
+      {isOpen && createPortal(
         <div
           className="fixed inset-0 z-[1100] flex items-end sm:items-center justify-center p-0 sm:p-4"
           style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }}
@@ -200,7 +201,8 @@ export function SearchableSelect({
               )}
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );

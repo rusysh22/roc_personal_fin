@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { authLogin } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
-import { Eye, EyeOff, Loader2, ArrowRight, User, Lock, Sparkles } from 'lucide-react';
+import { Eye, EyeOff, ArrowRight, User, Lock } from 'lucide-react';
 import Link from 'next/link';
 
 export default function LoginPage() {
@@ -45,21 +45,42 @@ export default function LoginPage() {
         <div className="login-grid-overlay" />
       </div>
 
+      {/* Fullscreen Loading Overlay */}
+      {loading && (
+        <div className="login-loading-overlay">
+          <div className="login-loading-content">
+            <div className="login-loading-spinner">
+              <div className="login-loading-ring" />
+              <div className="login-loading-icon">
+                <svg width="32" height="32" viewBox="0 0 192 192" fill="none">
+                  <text x="96" y="120" textAnchor="middle" fontFamily="sans-serif" fontWeight="bold" fontSize="80" fill="white">RN</text>
+                </svg>
+              </div>
+            </div>
+            <p className="login-loading-text">Sedang masuk...</p>
+            <p className="login-loading-subtext">Memverifikasi akun kamu</p>
+          </div>
+        </div>
+      )}
+
       {/* Content */}
       <div className="login-content">
         {/* Logo & Welcome */}
         <div className="login-hero">
           <div className="login-logo-wrapper">
             <div className="login-logo">
-              <Sparkles size={28} strokeWidth={2} />
+              <svg width="36" height="36" viewBox="0 0 192 192" fill="none">
+                <text x="96" y="120" textAnchor="middle" fontFamily="sans-serif" fontWeight="bold" fontSize="80" fill="white">RN</text>
+              </svg>
             </div>
             <div className="login-logo-glow" />
           </div>
+          <p className="login-app-name">Rusydani Niken</p>
           <h1 className="login-title">
             Selamat Datang
           </h1>
           <p className="login-subtitle">
-            Masuk ke <span className="login-brand-text">Rusydani Niken Apps</span> untuk kelola planningmu
+            Masuk untuk kelola planningmu
           </p>
         </div>
 
@@ -144,17 +165,8 @@ export default function LoginPage() {
             >
               <span className="login-btn-bg" />
               <span className="login-btn-content">
-                {loading ? (
-                  <>
-                    <Loader2 size={18} className="animate-spin" />
-                    <span>Memproses...</span>
-                  </>
-                ) : (
-                  <>
-                    <span>Masuk</span>
-                    <ArrowRight size={18} />
-                  </>
-                )}
+                <span>Masuk</span>
+                <ArrowRight size={18} />
               </span>
             </button>
           </form>
@@ -163,7 +175,7 @@ export default function LoginPage() {
 
         {/* Footer */}
         <p className="login-footer">
-          © 2026 Rusydani Niken Apps · v1.0.0
+          &copy; 2026 Rusydani Niken Apps &middot; v1.0.0
         </p>
       </div>
     </div>

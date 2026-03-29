@@ -749,6 +749,86 @@ body {
   gap: 0;
 }
 
+/* --- Fullscreen Loading Overlay --- */
+.login-loading-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(2, 26, 26, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  animation: loginLoadFadeIn 0.3s ease forwards;
+}
+
+@keyframes loginLoadFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.login-loading-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  animation: loginLoadPop 0.4s cubic-bezier(0.22, 1, 0.36, 1) 0.1s both;
+}
+
+@keyframes loginLoadPop {
+  from { opacity: 0; transform: scale(0.9) translateY(10px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.login-loading-spinner {
+  position: relative;
+  width: 72px;
+  height: 72px;
+}
+
+.login-loading-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 3px solid rgba(13, 148, 136, 0.15);
+  border-top-color: #2dd4bf;
+  animation: loginRingSpin 1s cubic-bezier(0.5, 0, 0.5, 1) infinite;
+}
+
+@keyframes loginRingSpin {
+  to { transform: rotate(360deg); }
+}
+
+.login-loading-icon {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  animation: loginIconPulse 2s ease-in-out infinite;
+}
+
+@keyframes loginIconPulse {
+  0%, 100% { transform: scale(1); opacity: 0.9; }
+  50% { transform: scale(1.08); opacity: 1; }
+}
+
+.login-loading-text {
+  font-size: 18px;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: -0.01em;
+}
+
+.login-loading-subtext {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.4);
+  font-weight: 400;
+  margin-top: -12px;
+}
+
 /* --- Hero Section --- */
 .login-hero {
   text-align: center;
@@ -759,32 +839,32 @@ body {
 .login-logo-wrapper {
   position: relative;
   display: inline-flex;
-  margin-bottom: 20px;
+  margin-bottom: 16px;
 }
 
 .login-logo {
   position: relative;
-  width: 68px;
-  height: 68px;
-  border-radius: 24px;
-  background: linear-gradient(135deg, #0d9488, #14b8a6, #2dd4bf);
+  width: 72px;
+  height: 72px;
+  border-radius: 22px;
+  background: linear-gradient(135deg, #0f766e 0%, #0d9488 50%, #2dd4bf 100%);
   display: flex;
   align-items: center;
   justify-content: center;
   color: white;
   box-shadow:
-    0 12px 40px rgba(13, 148, 136, 0.4),
-    0 4px 16px rgba(13, 148, 136, 0.3),
-    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    0 16px 48px rgba(13, 148, 136, 0.45),
+    0 6px 20px rgba(13, 148, 136, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25);
   animation: logoPulse 3s ease-in-out infinite;
   z-index: 1;
 }
 
 .login-logo-glow {
   position: absolute;
-  inset: -12px;
-  border-radius: 36px;
-  background: radial-gradient(circle, rgba(13, 148, 136, 0.25), transparent 70%);
+  inset: -16px;
+  border-radius: 40px;
+  background: radial-gradient(circle, rgba(13, 148, 136, 0.3), transparent 70%);
   animation: logoGlow 3s ease-in-out infinite;
 }
 
@@ -798,8 +878,17 @@ body {
   50% { opacity: 1; transform: scale(1.15); }
 }
 
+.login-app-name {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: #2dd4bf;
+  margin-bottom: 12px;
+}
+
 .login-title {
-  font-size: 28px;
+  font-size: 30px;
   font-weight: 800;
   color: #ffffff;
   letter-spacing: -0.03em;
@@ -809,7 +898,7 @@ body {
 
 .login-subtitle {
   font-size: 14px;
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(255, 255, 255, 0.45);
   font-weight: 400;
   line-height: 1.5;
 }

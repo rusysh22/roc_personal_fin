@@ -84,7 +84,7 @@ export default function DashboardPage() {
   if (!data) {
     return (
       <div className="flex flex-col items-center justify-center h-64 gap-4 p-8">
-        <div className="w-16 h-16 rounded-full bg-red-50 flex items-center justify-center">
+        <div className="w-16 h-16 rounded-full bg-red-50 dark:bg-red-900/20 flex items-center justify-center">
           <TrendingDown className="text-red-400" size={28} />
         </div>
         <p className="text-sm text-center" style={{ color: 'var(--color-text-secondary)' }}>Gagal memuat data. Pastikan backend berjalan di localhost:8000.</p>
@@ -334,9 +334,9 @@ export default function DashboardPage() {
             ))
           ) : (
             <div className="flex flex-col items-center justify-center p-6 text-center">
-              <Wallet size={24} className="text-slate-300 mb-2" />
-              <p className="text-sm text-slate-500 font-semibold">Belum ada Master Akun / Bank</p>
-              <p className="text-xs text-slate-400 mt-1">Tambahkan di menu Profil &gt; Kelola Master Akun / Bank</p>
+              <Wallet size={24} className="mb-2" style={{ color: 'var(--color-text-muted)' }} />
+              <p className="text-sm font-semibold" style={{ color: 'var(--color-text-secondary)' }}>Belum ada Master Akun / Bank</p>
+              <p className="text-xs mt-1" style={{ color: 'var(--color-text-muted)' }}>Tambahkan di menu Profil &gt; Kelola Master Akun / Bank</p>
             </div>
           )}
         </div>
