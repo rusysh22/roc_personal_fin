@@ -159,13 +159,14 @@ body {
 .mobile-container {
   position: relative;
   width: 100%;
-  min-height: 100vh;
-  min-height: 100dvh;
+  height: 100vh;
+  height: 100dvh;
   background: var(--color-bg-app);
   display: flex;
   flex-direction: column;
   z-index: 1;
   isolation: isolate;
+  overflow: hidden; /* Ensure it doesn't expand beyond viewport */
 }
 
 @media (min-width: 520px) {
@@ -202,6 +203,7 @@ body {
   -webkit-overflow-scrolling: touch;
   scroll-behavior: smooth;
   overscroll-behavior-y: contain;
+  touch-action: pan-y; /* Explicitly allow vertical panning */
 }
 
 .mobile-content::-webkit-scrollbar {
