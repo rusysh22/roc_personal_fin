@@ -315,6 +315,10 @@ export default function NotesPage() {
             .quill-container .ql-editor.ql-blank::before {
               color: var(--color-text-muted);
               font-style: normal;
+              pointer-events: none;
+            }
+            .quill-container .ql-editor:focus::before {
+              display: none !important;
             }
             .dark .ql-stroke { stroke: var(--color-text-primary) !important; }
             .dark .ql-fill { fill: var(--color-text-primary) !important; }

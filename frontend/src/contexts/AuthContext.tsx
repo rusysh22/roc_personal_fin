@@ -16,6 +16,7 @@ interface AuthContextType {
   user: User | null;
   loading: boolean;
   checkAuth: () => Promise<void>;
+  loginAndSetUser: (accessToken: string, refreshToken: string) => Promise<void>;
   logout: () => Promise<void>;
   setUser: (user: User | null) => void;
 }
@@ -24,6 +25,7 @@ const AuthContext = createContext<AuthContextType>({
   user: null,
   loading: true,
   checkAuth: async () => {},
+  loginAndSetUser: async () => {},
   logout: async () => {},
   setUser: () => {},
 });
@@ -51,6 +53,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  // Login: store tokens and fetch user in one step (avoids Safari localStorage timing issues)
+  const loginAndSetUser = useCallback(async (accessToken: string, refreshToken: string) => {
+    localStorage.setItem('access_token', accessToken);
+    localStorage.setItem('refresh_token', refreshToken);
+    try {
+      const res = await authMe();
+      setUser(res.data);
+      setLoading(false);
+    } catch {
+      setUser(null);
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('refresh_token');
+      setLoading(false);
+      throw new Error('Failed to fetch user after login');
+    }
+  }, []);
+
   const logout = useCallback(async () => {
     try {
       await authLogout();
@@ -67,7 +86,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [checkAuth]);
 
   return (
-    <AuthContext.Provider value={{ user, loading, checkAuth, logout, setUser }}>
+    <AuthContext.Provider value={{ user, loading, checkAuth, loginAndSetUser, logout, setUser }}>
       {children}
     </AuthContext.Provider>
   );

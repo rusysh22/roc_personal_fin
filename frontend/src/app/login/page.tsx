@@ -9,7 +9,7 @@ import Link from 'next/link';
 
 export default function LoginPage() {
   const router = useRouter();
-  const { checkAuth } = useAuth();
+  const { loginAndSetUser } = useAuth();
   const [form, setForm] = useState({ username: '', password: '' });
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -22,9 +22,7 @@ export default function LoginPage() {
     setLoading(true);
     try {
       const res = await authLogin(form);
-      localStorage.setItem('access_token', res.data.access_token);
-      localStorage.setItem('refresh_token', res.data.refresh_token);
-      await checkAuth();
+      await loginAndSetUser(res.data.access_token, res.data.refresh_token);
       router.push('/');
     } catch (err: unknown) {
       const error = err as { response?: { data?: { error?: string } } };

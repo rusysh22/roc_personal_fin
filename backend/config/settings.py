@@ -109,6 +109,13 @@ if _s3_access_key and _s3_secret_key:
     AWS_S3_VERIFY = True
     AWS_QUERYSTRING_AUTH = False  # Public bucket
 
+    # Build custom domain for public URL access
+    # Supabase public URL format: https://<project>.supabase.co/storage/v1/object/public/<bucket>
+    _supabase_url = os.getenv('SUPABASE_URL', '')
+    if _supabase_url:
+        _supabase_host = _supabase_url.rstrip('/')
+        AWS_S3_CUSTOM_DOMAIN = f"{_supabase_host.replace('https://', '')}/storage/v1/object/public/{AWS_STORAGE_BUCKET_NAME}"
+
     STORAGES["default"] = {
         "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
     }

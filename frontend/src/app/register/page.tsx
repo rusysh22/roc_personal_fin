@@ -9,7 +9,7 @@ import Link from 'next/link';
 
 export default function RegisterPage() {
   const router = useRouter();
-  const { checkAuth } = useAuth();
+  const { loginAndSetUser } = useAuth();
   const [form, setForm] = useState({ first_name: '', username: '', email: '', password: '', confirmPassword: '' });
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -32,9 +32,7 @@ export default function RegisterPage() {
         password: form.password,
         first_name: form.first_name,
       });
-      localStorage.setItem('access_token', res.data.access_token);
-      localStorage.setItem('refresh_token', res.data.refresh_token);
-      await checkAuth();
+      await loginAndSetUser(res.data.access_token, res.data.refresh_token);
       router.push('/');
     } catch (err: any) {
       setError(err.response?.data?.error || 'Registrasi gagal. Coba lagi.');

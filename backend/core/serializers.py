@@ -34,11 +34,16 @@ class PlanSerializer(serializers.ModelSerializer):
         read_only_fields = ['created_at', 'updated_at']
 
 class UserSerializer(serializers.ModelSerializer):
-    profile_photo = serializers.ImageField(source='user_settings.profile_photo', read_only=True)
-    
+    profile_photo = serializers.SerializerMethodField()
+
     class Meta:
         model = User
         fields = ['id', 'username', 'email', 'first_name', 'last_name', 'profile_photo']
+
+    def get_profile_photo(self, obj):
+        if hasattr(obj, 'user_settings') and obj.user_settings.profile_photo:
+            return obj.user_settings.profile_photo.url
+        return None
 
 
 class CategorySerializer(serializers.ModelSerializer):
