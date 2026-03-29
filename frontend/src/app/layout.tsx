@@ -29,6 +29,28 @@ export const metadata: Metadata = {
     icon: "/icon-192.svg",
     apple: "/icon-192.svg",
   },
+  openGraph: {
+    title: 'Rusydani Niken Apps',
+    description: 'Catat. Pantau. Kelola planningmu lebih cerdas dengan Rusydani Niken Apps.',
+    url: 'https://rusydani-niken.vercel.app',
+    siteName: 'RN Apps',
+    images: [
+      {
+        url: '/og-image.png',
+        width: 1200,
+        height: 630,
+        alt: 'Rusydani Niken Apps Preview',
+      },
+    ],
+    locale: 'id_ID',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Rusydani Niken Apps',
+    description: 'Catat. Pantau. Kelola planningmu lebih cerdas.',
+    images: ['/og-image.png'],
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
@@ -45,7 +67,7 @@ export default function RootLayout({
     <html lang="id">
       <head>
         <meta name="mobile-web-app-capable" content="yes" />
-        <link rel="apple-touch-icon" href="/icon-rn.png" />
+        <link rel="apple-touch-icon" href="/icon-192.svg" />
       </head>
       <body className={`${lexend.variable} font-sans antialiased`}>
         <ThemeProvider>
