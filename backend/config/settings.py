@@ -132,6 +132,12 @@ EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', '')
 EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
 DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'noreply@fintracker.app')
 
-# Session settings
+# Session and Cookie settings for Cross-Domain Support
 SESSION_COOKIE_AGE = 60 * 60 * 24 * 30  # 30 days
 SESSION_SAVE_EVERY_REQUEST = True
+SESSION_COOKIE_SAMESITE = 'None'
+SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_SAMESITE = 'None'
+CSRF_COOKIE_SECURE = True
+SESSION_COOKIE_HTTPONLY = True
+CSRF_COOKIE_HTTPONLY = False  # Frontend needs to read CSRF cookie if used
