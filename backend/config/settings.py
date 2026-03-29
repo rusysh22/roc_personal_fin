@@ -98,10 +98,7 @@ MEDIA_URL = 'media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
 # CORS
-CORS_ALLOWED_ORIGINS = [
-    'http://localhost:3000',
-    'https://rusydani-niken.vercel.app',
-]
+CORS_ALLOWED_ORIGINS = os.getenv('CORS_ALLOWED_ORIGINS', 'http://localhost:3000,https://rusydani-niken.vercel.app,https://niken.rusydani.my.id,https://rusydani-niken.roc.web.id,https://server-niken.rusydani.my.id').split(',')
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_HEADERS = [
     'accept',
@@ -124,10 +121,7 @@ REST_FRAMEWORK = {
 }
 
 # Disable CSRF for API (frontend is separate origin)
-CSRF_TRUSTED_ORIGINS = [
-    'http://localhost:3000',
-    'https://rusydani-niken.vercel.app',
-]
+CSRF_TRUSTED_ORIGINS = os.getenv('CSRF_TRUSTED_ORIGINS', 'http://localhost:3000,https://rusydani-niken.vercel.app,https://niken.rusydani.my.id,https://rusydani-niken.roc.web.id,https://server-niken.rusydani.my.id').split(',')
 
 # Email settings (console backend for development)
 EMAIL_BACKEND = os.getenv('EMAIL_BACKEND', 'django.core.mail.backends.console.EmailBackend')
