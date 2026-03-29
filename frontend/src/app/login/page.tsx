@@ -57,7 +57,7 @@ export default function LoginPage() {
             Selamat Datang
           </h1>
           <p className="login-subtitle">
-            Masuk ke <span className="login-brand-text">Rusydani Niken Couple</span> untuk kelola keuanganmu
+            Masuk ke <span className="login-brand-text">Rusydani Niken Apps</span> untuk kelola planningmu
           </p>
         </div>
 
