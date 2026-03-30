@@ -10,10 +10,11 @@ import {
 import { 
   FileText, Plus, Loader2, Trash2, Check, Search, 
   Calendar as CalendarIcon, X, ArrowLeft, MoreVertical,
-  Briefcase, Heart, Home, Settings, Info, Tag
+  Briefcase, Heart, Home, Settings, Info, Tag, CalendarDays, RefreshCw, Cloud
 } from 'lucide-react';
 import { SectionLoading } from '@/components/ui/SectionLoading';
 import { useDialog } from '@/contexts/DialogContext';
+import { CalendarView } from '@/components/notes/CalendarView';
 
 import 'react-quill-new/dist/quill.snow.css';
 
@@ -56,6 +57,7 @@ export default function NotesPage() {
   const [search, setSearch] = useState('');
 
   // Navigation State
+  const [activeTab, setActiveTab] = useState<'notes' | 'calendar'>('notes');
   const [selectedCategory, setSelectedCategory] = useState<NoteCategory | null>(null);
 
   // Form Editor State
@@ -344,30 +346,54 @@ export default function NotesPage() {
               {selectedCategory ? 'Kategori Catatan' : 'Internal Catatan'}
             </p>
             <h1 className="text-xl font-bold text-white">
-              {selectedCategory ? selectedCategory.name : 'Notes'}
+              {selectedCategory ? selectedCategory.name : 'Notes & Plan'}
             </h1>
           </div>
         </div>
 
-        {/* Search Bar */}
-        <div className="mt-4 relative animate-fade-in-up">
-          <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-            <Search size={16} className="text-white/60" />
+        {/* Tab Switcher */}
+        {!selectedCategory && (
+          <div className="mt-6 flex p-1 bg-white/10 backdrop-blur-md rounded-2xl animate-fade-in-up">
+            <button 
+              onClick={() => setActiveTab('notes')}
+              className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold transition-all ${activeTab === 'notes' ? 'bg-white text-[var(--color-primary)] shadow-lg' : 'text-white/60 hover:text-white'}`}
+            >
+              <FileText size={16} />
+              Notes
+            </button>
+            <button 
+              onClick={() => setActiveTab('calendar')}
+              className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold transition-all ${activeTab === 'calendar' ? 'bg-white text-[var(--color-primary)] shadow-lg' : 'text-white/60 hover:text-white'}`}
+            >
+              <CalendarDays size={16} />
+              Calendar Plan
+            </button>
           </div>
-          <input
-            type="text"
-            className="block w-full pl-10 pr-3 py-3 rounded-2xl text-sm placeholder-white/60 text-white outline-none focus:ring-2 focus:ring-white/30 transition-all"
-            style={{ background: 'rgba(255, 255, 255, 0.15)', backdropFilter: 'blur(8px)' }}
-            placeholder={selectedCategory ? `Cari di ${selectedCategory.name}...` : "Cari kategori atau catatan..."}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        </div>
+        )}
+
+        {/* Search Bar - only for notes tab */}
+        {activeTab === 'notes' && (
+          <div className="mt-4 relative animate-fade-in-up">
+            <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+              <Search size={16} className="text-white/60" />
+            </div>
+            <input
+              type="text"
+              className="block w-full pl-10 pr-3 py-3 rounded-2xl text-sm placeholder-white/60 text-white outline-none focus:ring-2 focus:ring-white/30 transition-all"
+              style={{ background: 'rgba(255, 255, 255, 0.15)', backdropFilter: 'blur(8px)' }}
+              placeholder={selectedCategory ? `Cari di ${selectedCategory.name}...` : "Cari kategori atau catatan..."}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+        )}
       </div>
 
       <div style={{ padding: '0 var(--page-px)' }} className="-mt-4">
         {loading ? (
           <SectionLoading height="300px" />
+        ) : activeTab === 'calendar' && !selectedCategory ? (
+          <CalendarView />
         ) : !selectedCategory ? (
           /* CATEGORY GRID VIEW */
           <div className="grid grid-cols-2 gap-3 animate-fade-in-up">
@@ -460,13 +486,15 @@ export default function NotesPage() {
         )}
       </div>
 
-      {/* FAB */}
-      <button 
-        onClick={!selectedCategory ? handleCreateCategory : handleOpenNew} 
-        className="fab z-[70]"
-      >
-        <Plus size={24} strokeWidth={2.5} />
-      </button>
+      {/* FAB - hide on calendar tab */}
+      {activeTab === 'notes' && (
+        <button 
+          onClick={!selectedCategory ? handleCreateCategory : handleOpenNew} 
+          className="fab z-[70]"
+        >
+          <Plus size={24} strokeWidth={2.5} />
+        </button>
+      )}
     </div>
   );
 }

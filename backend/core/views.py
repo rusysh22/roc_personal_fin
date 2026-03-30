@@ -9,8 +9,8 @@ from django.contrib.auth import authenticate
 from django.contrib.auth.models import User
 from django.core.mail import send_mail
 from django.conf import settings
-from django.db.models import Sum, Q
-from django.db.models.functions import TruncMonth, TruncDate
+from django.db.models import Sum, Q, Case, When, Value, F, Subquery, OuterRef, DecimalField
+from django.db.models.functions import TruncMonth, TruncDate, Coalesce
 from django.http import HttpResponse
 from django.utils import timezone
 from rest_framework import viewsets, status
@@ -468,6 +468,36 @@ def get_company_create_kwargs(request):
     company_id = request.headers.get('X-Company-Id')
     return {'company_id': company_id} if company_id else {'company_id': None}
 
+
+def _account_tx_subquery(tx_type):
+    """Subquery to sum transactions of a given type for a finance account,
+    respecting balance_date if set."""
+    return Coalesce(
+        Subquery(
+            Transaction.objects.filter(
+                finance_account=OuterRef('pk'),
+                type=tx_type,
+            ).filter(
+                # Include all tx if no balance_date, or only tx >= balance_date
+                Q(finance_account__balance_date__isnull=True) | Q(date__gte=OuterRef('balance_date'))
+            ).values('finance_account').annotate(
+                total=Sum('amount')
+            ).values('total')[:1],
+            output_field=DecimalField(),
+        ),
+        Value(0),
+        output_field=DecimalField(),
+    )
+
+
+def annotate_account_balance(qs):
+    """Annotate FinanceAccount queryset with computed_balance in a single query.
+    Avoids N+1 from the current_balance property.
+    """
+    return qs.annotate(
+        computed_balance=F('initial_balance') + _account_tx_subquery('income') - _account_tx_subquery('expense')
+    )
+
 class CategoryViewSet(viewsets.ModelViewSet):
     serializer_class = CategorySerializer
     authentication_classes = API_AUTH
@@ -488,7 +518,7 @@ class TransactionViewSet(viewsets.ModelViewSet):
     authentication_classes = API_AUTH
 
     def get_queryset(self):
-        qs = Transaction.objects.filter(**get_company_filter_kwargs(self.request))
+        qs = Transaction.objects.filter(**get_company_filter_kwargs(self.request)).select_related('category', 'finance_account')
         params = self.request.query_params
 
         if params.get('type'):
@@ -503,6 +533,13 @@ class TransactionViewSet(viewsets.ModelViewSet):
             qs = qs.filter(date__gte=params['date_from'])
         if params.get('date_to'):
             qs = qs.filter(date__lte=params['date_to'])
+        if params.get('min_amount'):
+            qs = qs.filter(amount__gte=params['min_amount'])
+        if params.get('max_amount'):
+            qs = qs.filter(amount__lte=params['max_amount'])
+        if params.get('search'):
+            search = params['search']
+            qs = qs.filter(Q(description__icontains=search) | Q(category__name__icontains=search))
 
         return qs
 
@@ -585,20 +622,17 @@ def dashboard(request):
         date__year=year,
     )
 
-    total_income = transactions.filter(type='income').aggregate(
-        total=Sum('amount'))['total'] or Decimal('0')
-    total_expense = transactions.filter(type='expense').aggregate(
-        total=Sum('amount'))['total'] or Decimal('0')
-
-    # Balance by type
-    personal_income = transactions.filter(type='income', balance_type='personal').aggregate(
-        total=Sum('amount'))['total'] or Decimal('0')
-    personal_expense = transactions.filter(type='expense', balance_type='personal').aggregate(
-        total=Sum('amount'))['total'] or Decimal('0')
-    office_income = transactions.filter(type='income', balance_type='office').aggregate(
-        total=Sum('amount'))['total'] or Decimal('0')
-    office_expense = transactions.filter(type='expense', balance_type='office').aggregate(
-        total=Sum('amount'))['total'] or Decimal('0')
+    # Single aggregate query instead of 6 separate ones
+    agg = transactions.aggregate(
+        total_income=Coalesce(Sum('amount', filter=Q(type='income')), Value(0), output_field=DecimalField()),
+        total_expense=Coalesce(Sum('amount', filter=Q(type='expense')), Value(0), output_field=DecimalField()),
+        personal_income=Coalesce(Sum('amount', filter=Q(type='income', balance_type='personal')), Value(0), output_field=DecimalField()),
+        personal_expense=Coalesce(Sum('amount', filter=Q(type='expense', balance_type='personal')), Value(0), output_field=DecimalField()),
+        office_income=Coalesce(Sum('amount', filter=Q(type='income', balance_type='office')), Value(0), output_field=DecimalField()),
+        office_expense=Coalesce(Sum('amount', filter=Q(type='expense', balance_type='office')), Value(0), output_field=DecimalField()),
+    )
+    total_income = agg['total_income']
+    total_expense = agg['total_expense']
 
     # Spending by category
     spending_by_category = list(
@@ -626,30 +660,38 @@ def dashboard(request):
         .order_by('day')
     )
 
-    recent_transactions = transactions.order_by('-date', '-created_at')[:5]
-    
-    accounts_qs = FinanceAccount.objects.filter(**get_company_filter_kwargs(request), is_active=True)
-    accounts_data = FinanceAccountSerializer(accounts_qs, many=True).data
+    recent_transactions = transactions.select_related('category', 'finance_account').order_by('-date', '-created_at')[:5]
 
-    # Calculate total saldo from finance accounts (current_balance includes initial + transactions)
+    # Annotate accounts with computed_balance in a single query (no N+1)
+    accounts_qs = annotate_account_balance(
+        FinanceAccount.objects.filter(**get_company_filter_kwargs(request), is_active=True)
+    )
+    # Evaluate once, reuse the list
+    accounts_list = list(accounts_qs)
+    accounts_data = FinanceAccountSerializer(accounts_list, many=True).data
+
+    # Calculate saldo from annotated balances (no extra queries)
     personal_account_balance = sum(
-        acc.current_balance for acc in accounts_qs if acc.balance_type == 'personal'
+        acc.computed_balance for acc in accounts_list if acc.balance_type == 'personal'
     )
     office_account_balance = sum(
-        acc.current_balance for acc in accounts_qs if acc.balance_type == 'office'
+        acc.computed_balance for acc in accounts_list if acc.balance_type == 'office'
     )
     total_account_balance = personal_account_balance + office_account_balance
+    has_accounts = len(accounts_list) > 0
 
-    # Transaction-only balance for the selected month (without account initial balances)
-    tx_personal_balance = personal_income - personal_expense
-    tx_office_balance = office_income - office_expense
+    # Transaction-only balance fallback
+    tx_personal_balance = agg['personal_income'] - agg['personal_expense']
+    tx_office_balance = agg['office_income'] - agg['office_expense']
+    has_personal_accounts = any(a.balance_type == 'personal' for a in accounts_list)
+    has_office_accounts = any(a.balance_type == 'office' for a in accounts_list)
 
     return Response({
         'total_income': str(total_income),
         'total_expense': str(total_expense),
-        'balance': str(total_account_balance if accounts_qs.exists() else total_income - total_expense),
-        'personal_balance': str(personal_account_balance if accounts_qs.filter(balance_type='personal').exists() else tx_personal_balance),
-        'office_balance': str(office_account_balance if accounts_qs.filter(balance_type='office').exists() else tx_office_balance),
+        'balance': str(total_account_balance if has_accounts else total_income - total_expense),
+        'personal_balance': str(personal_account_balance if has_personal_accounts else tx_personal_balance),
+        'office_balance': str(office_account_balance if has_office_accounts else tx_office_balance),
         'accounts': accounts_data,
         'recent_transactions': TransactionSerializer(recent_transactions, many=True).data,
         'spending_by_category': spending_by_category,
@@ -766,7 +808,7 @@ class FinanceAccountViewSet(viewsets.ModelViewSet):
         is_active = self.request.query_params.get('is_active')
         if is_active is not None:
             qs = qs.filter(is_active=is_active.lower() == 'true')
-        return qs
+        return annotate_account_balance(qs)
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user, **get_company_create_kwargs(self.request))

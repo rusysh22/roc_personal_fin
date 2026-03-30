@@ -119,6 +119,8 @@ class FinanceAccount(models.Model):
         ('bank', 'Bank'),
         ('e_wallet', 'E-Wallet'),
         ('cash', 'Tunai'),
+        ('credit_card', 'Kartu Kredit'),
+        ('paylater', 'Paylater'),
         ('investment', 'Investasi'),
         ('other', 'Lainnya'),
     ]
@@ -254,6 +256,7 @@ class Plan(models.Model):
     description = models.TextField(blank=True, default='')
     target_date = models.DateField()
     is_realized = models.BooleanField(default=False)
+    google_event_id = models.CharField(max_length=255, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

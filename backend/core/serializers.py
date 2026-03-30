@@ -28,7 +28,7 @@ class PlanSerializer(serializers.ModelSerializer):
         model = Plan
         fields = [
             'id', 'category', 'category_name', 'sub_category', 'sub_category_name',
-            'item_name', 'amount', 'description', 'target_date', 'is_realized',
+            'item_name', 'amount', 'description', 'target_date', 'google_event_id', 'is_realized',
             'created_at', 'updated_at'
         ]
         read_only_fields = ['created_at', 'updated_at']
@@ -53,7 +53,7 @@ class CategorySerializer(serializers.ModelSerializer):
 
 
 class FinanceAccountSerializer(serializers.ModelSerializer):
-    current_balance = serializers.DecimalField(max_digits=15, decimal_places=2, read_only=True)
+    current_balance = serializers.SerializerMethodField()
 
     class Meta:
         model = FinanceAccount
@@ -62,6 +62,12 @@ class FinanceAccountSerializer(serializers.ModelSerializer):
             'current_balance', 'color', 'is_active', 'created_at', 'updated_at'
         ]
         read_only_fields = ['created_at', 'updated_at']
+
+    def get_current_balance(self, obj):
+        # Use annotated value if available (optimized), else fall back to property
+        if hasattr(obj, 'computed_balance') and obj.computed_balance is not None:
+            return str(obj.computed_balance)
+        return str(obj.current_balance)
 
 
 class CompanySerializer(serializers.ModelSerializer):

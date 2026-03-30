@@ -173,7 +173,7 @@ export default function LoginPage() {
 
         {/* Footer */}
         <p className="login-footer">
-          &copy; 2026 Rusydani Niken Apps &middot; v1.0.0
+          &copy; 2026 Rusydani Niken Apps &middot; v1.2.0
         </p>
       </div>
     </div>

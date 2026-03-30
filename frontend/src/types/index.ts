@@ -70,6 +70,7 @@ export interface Plan {
   description: string;
   target_date: string;
   is_realized: boolean;
+  google_event_id?: string;
   created_at: string;
   updated_at: string;
 }
@@ -77,7 +78,7 @@ export interface Plan {
 export interface FinanceAccount {
   id: number;
   name: string;
-  type: 'bank' | 'e_wallet' | 'cash' | 'investment' | 'other';
+  type: 'bank' | 'e_wallet' | 'cash' | 'credit_card' | 'paylater' | 'investment' | 'other';
   balance_type: 'personal' | 'office';
   initial_balance: string;
   balance_date: string | null;
@@ -183,7 +184,7 @@ export interface SavingsGoal {
   updated_at: string;
 }
 
-export type FinanceAccountType = 'bank' | 'e_wallet' | 'cash' | 'investment' | 'other';
+export type FinanceAccountType = 'bank' | 'e_wallet' | 'cash' | 'credit_card' | 'paylater' | 'investment' | 'other';
 export type PaymentMethod = 'cash' | 'bank_transfer' | 'credit_card' | 'paylater' | 'e_wallet' | 'cod';
 export type BalanceType = 'personal' | 'office';
 export type TransactionType = 'expense' | 'income';
@@ -193,6 +194,8 @@ export const FINANCE_ACCOUNT_TYPE_LABELS: Record<FinanceAccountType, string> = {
   bank: 'Bank',
   e_wallet: 'E-Wallet',
   cash: 'Tunai',
+  credit_card: 'Kartu Kredit',
+  paylater: 'Paylater',
   investment: 'Investasi',
   other: 'Lainnya',
 };

@@ -3,8 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Company, CompanyMember } from '@/types';
-import { getCompanies, createCompany, deleteCompany, getCompanyMembers, createCompanyMember, deleteCompanyMember } from '@/lib/api';
-import { Building2, Plus, ArrowLeft, Loader2, Trash2, Users, Check, X } from 'lucide-react';
+import { getCompanies, createCompany, updateCompany, deleteCompany, getCompanyMembers, createCompanyMember, deleteCompanyMember } from '@/lib/api';
+import { Building2, Plus, ArrowLeft, Loader2, Trash2, Users, Check, X, Pencil } from 'lucide-react';
 import { SectionLoading } from '@/components/ui/SectionLoading';
 import { useDialog } from '@/contexts/DialogContext';
 
@@ -17,6 +17,7 @@ export default function CompanySettingsPage() {
 
   // Create forms
   const [showCompanyForm, setShowCompanyForm] = useState(false);
+  const [editingCompanyId, setEditingCompanyId] = useState<number | null>(null);
   const [companyName, setCompanyName] = useState('');
   const [companyDesc, setCompanyDesc] = useState('');
   const [savingCompany, setSavingCompany] = useState(false);
@@ -50,17 +51,29 @@ export default function CompanySettingsPage() {
     if (!companyName) return;
     setSavingCompany(true);
     try {
-      await createCompany({ name: companyName, description: companyDesc });
+      if (editingCompanyId) {
+        await updateCompany(editingCompanyId, { name: companyName, description: companyDesc });
+      } else {
+        await createCompany({ name: companyName, description: companyDesc });
+      }
       setShowCompanyForm(false);
+      setEditingCompanyId(null);
       setCompanyName('');
       setCompanyDesc('');
       fetchData();
     } catch (err) {
       console.error(err);
-      showAlert('Gagal membuat perusahaan', { variant: 'error' });
+      showAlert(`Gagal ${editingCompanyId ? 'mengupdate' : 'membuat'} perusahaan`, { variant: 'error' });
     } finally {
       setSavingCompany(false);
     }
+  };
+
+  const handleEditCompany = (comp: Company) => {
+    setCompanyName(comp.name);
+    setCompanyDesc(comp.description || '');
+    setEditingCompanyId(comp.id);
+    setShowCompanyForm(true);
   };
 
   const handleDeleteCompany = async (id: number) => {
@@ -109,8 +122,18 @@ export default function CompanySettingsPage() {
         <div className="fullpage-overlay flex items-end sm:items-center justify-center p-0 sm:p-4 z-50">
           <div className="w-full max-w-md bg-[var(--color-bg-app)] sm:rounded-3xl rounded-t-3xl overflow-hidden flex flex-col max-h-[90vh] shadow-2xl animate-slide-up">
             <div className="flex items-center justify-between p-4 border-b" style={{ borderColor: 'var(--color-border-card)' }}>
-              <h2 className="text-lg font-bold" style={{ color: 'var(--color-text-primary)' }}>Buat Perusahaan</h2>
-              <button onClick={() => setShowCompanyForm(false)} className="w-8 h-8 rounded-full bg-black/5 flex items-center justify-center touch-feedback">
+              <h2 className="text-lg font-bold" style={{ color: 'var(--color-text-primary)' }}>
+                {editingCompanyId ? 'Edit Perusahaan' : 'Buat Perusahaan'}
+              </h2>
+              <button 
+                onClick={() => {
+                  setShowCompanyForm(false);
+                  setEditingCompanyId(null);
+                  setCompanyName('');
+                  setCompanyDesc('');
+                }} 
+                className="w-8 h-8 rounded-full bg-black/5 flex items-center justify-center touch-feedback"
+              >
                 <X size={18} style={{ color: 'var(--color-text-secondary)' }} />
               </button>
             </div>
@@ -126,7 +149,7 @@ export default function CompanySettingsPage() {
               <button onClick={handleSaveCompany} disabled={savingCompany || !companyName}
                 className="w-full py-3.5 rounded-2xl text-sm font-bold text-white flex items-center justify-center gap-2 disabled:opacity-40 mt-2"
                 style={{ background: 'linear-gradient(135deg, var(--color-primary-dark), var(--color-primary))', boxShadow: '0 8px 24px var(--color-primary-transparent)' }}>
-                {savingCompany ? <><Loader2 size={16} className="animate-spin" /> Menyimpan...</> : <><Check size={16} /> Buat Perusahaan</>}
+                {savingCompany ? <><Loader2 size={16} className="animate-spin" /> Menyimpan...</> : <><Check size={16} /> {editingCompanyId ? 'Update Perusahaan' : 'Buat Perusahaan'}</>}
               </button>
             </div>
           </div>
@@ -175,7 +198,12 @@ export default function CompanySettingsPage() {
             <p className="text-xs text-white/70 font-medium uppercase tracking-wider">Keuangan</p>
             <h1 className="text-xl font-bold text-white">Master Environtment</h1>
           </div>
-          <button onClick={() => setShowCompanyForm(true)} className="w-9 h-9 rounded-xl bg-white/15 flex items-center justify-center hover:bg-white/25 transition-colors">
+          <button onClick={() => {
+            setEditingCompanyId(null);
+            setCompanyName('');
+            setCompanyDesc('');
+            setShowCompanyForm(true);
+          }} className="w-9 h-9 rounded-xl bg-white/15 flex items-center justify-center hover:bg-white/25 transition-colors">
             <Plus size={18} className="text-white" />
           </button>
         </div>
@@ -221,9 +249,14 @@ export default function CompanySettingsPage() {
                           <p className="text-[11px]" style={{ color: 'var(--color-text-muted)' }}>{comp.description || 'Tidak ada deskripsi'}</p>
                         </div>
                       </div>
-                      <button onClick={() => handleDeleteCompany(comp.id)} className="w-8 h-8 rounded-full flex items-center justify-center bg-rose-50 text-rose-500">
-                        <Trash2 size={14} />
-                      </button>
+                      <div className="flex items-center gap-1.5">
+                        <button onClick={() => handleEditCompany(comp)} className="w-8 h-8 rounded-full flex items-center justify-center bg-indigo-50 text-indigo-500">
+                          <Pencil size={14} />
+                        </button>
+                        <button onClick={() => handleDeleteCompany(comp.id)} className="w-8 h-8 rounded-full flex items-center justify-center bg-rose-50 text-rose-500">
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
                     </div>
                   </div>
 

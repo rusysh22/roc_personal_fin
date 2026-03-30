@@ -220,8 +220,8 @@ export default function SettingsPage() {
           <p className="text-[11px] font-bold uppercase tracking-wider mb-2 px-1" style={{ color: 'var(--color-section-label)' }}>Tentang</p>
           <div className="mobile-card overflow-hidden">
             <SettingRow icon={<Info size={16} style={{ color: 'var(--color-text-muted)' }} />} iconBg="bg-gray-100 dark:bg-gray-500/10"
-              title="Rusydani Niken Apps" subtitle="Versi 1.0.0"
-              right={<span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>v1.0</span>} />
+              title="Rusydani Niken Apps" subtitle="Versi 1.2.0"
+              right={<span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>v1.2.0</span>} />
           </div>
         </div>
 
@@ -244,7 +244,7 @@ export default function SettingsPage() {
             <span className="text-2xl">💰</span>
           </div>
           <p className="text-white font-bold text-base">Rusydani Niken Apps</p>
-          <p className="text-white/70 text-xs mt-1">Catat. Pantau. Kelola keuangan lebih cerdas. dilarang marah-marah, menunda-nunda jam mandi, dilarang begadanggggg sumpah, jarang2in beli kopi, made with FULL ❤️ Rusydani to Niken</p>
+          <p className="text-white/70 text-xs mt-1">Catat. Pantau. Kelola keuangan lebih cerdas. dilarang marah-marah, dilarang menunda-nunda jam mandi, dilarang begadanggggg sumpah, jarang2in beli kopi, made with FULL ❤️ Rusydani to Niken</p>
         </div>
       </div>
     </div>
