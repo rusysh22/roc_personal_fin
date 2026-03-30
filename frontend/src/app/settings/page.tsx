@@ -244,7 +244,7 @@ export default function SettingsPage() {
             <span className="text-2xl">💰</span>
           </div>
           <p className="text-white font-bold text-base">Rusydani Niken Apps</p>
-          <p className="text-white/70 text-xs mt-1">Catat. Pantau. Kelola keuangan lebih cerdas. dilarang marah-marah, made with FULL ❤️</p>
+          <p className="text-white/70 text-xs mt-1">Catat. Pantau. Kelola keuangan lebih cerdas. dilarang marah-marah, menunda-nunda jam mandi, dilarang begadanggggg sumpah, jarang2in beli kopi, made with FULL ❤️ Rusydani to Niken</p>
         </div>
       </div>
     </div>

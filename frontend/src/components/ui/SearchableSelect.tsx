@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect, useMemo } from 'react';
+import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { Search, ChevronDown, Check, X } from 'lucide-react';
 
@@ -37,6 +37,27 @@ export function SearchableSelect({
   const containerRef = useRef<HTMLDivElement>(null);
 
   const selectedOption = options.find((o) => o.value === value);
+  const labelRef = useRef<HTMLSpanElement>(null);
+  const labelWrapperRef = useRef<HTMLSpanElement>(null);
+  const [isOverflowing, setIsOverflowing] = useState(false);
+
+  // Check if the label overflows its container and set marquee offset
+  const checkOverflow = useCallback(() => {
+    if (labelRef.current && labelWrapperRef.current) {
+      const textWidth = labelRef.current.scrollWidth;
+      const containerWidth = labelWrapperRef.current.clientWidth;
+      const overflows = textWidth > containerWidth;
+      setIsOverflowing(overflows);
+      if (overflows && labelRef.current) {
+        const offset = textWidth - containerWidth;
+        labelRef.current.style.setProperty('--marquee-offset', `-${offset}px`);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    checkOverflow();
+  }, [selectedOption, checkOverflow]);
 
   const filtered = useMemo(() => {
     if (!search) return options;
@@ -79,11 +100,15 @@ export function SearchableSelect({
         className={`mobile-input flex items-center justify-between gap-2 text-left disabled:opacity-50 ${className}`}
       >
         <span
-          className={`flex-1 truncate text-sm ${selectedOption ? 'font-semibold' : ''}`}
+          ref={labelWrapperRef}
+          className={`flex-1 overflow-hidden text-sm ${selectedOption ? 'font-semibold' : ''}`}
           style={{ color: selectedOption ? 'var(--color-text-primary)' : 'var(--color-text-muted)' }}
         >
           {selectedOption ? (
-            <span className="flex items-center gap-2">
+            <span
+              ref={labelRef}
+              className={`flex items-center gap-2 whitespace-nowrap ${isOverflowing ? 'searchable-select-marquee' : ''}`}
+            >
               {selectedOption.icon && <span>{selectedOption.icon}</span>}
               {selectedOption.color && (
                 <span className="w-3 h-3 rounded-full shrink-0" style={{ background: selectedOption.color }} />

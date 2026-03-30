@@ -133,6 +133,7 @@ class FinanceAccount(models.Model):
     type = models.CharField(max_length=20, choices=ACCOUNT_TYPES, default='bank')
     balance_type = models.CharField(max_length=20, choices=BALANCE_TYPES, default='personal')
     initial_balance = models.DecimalField(max_digits=15, decimal_places=2, default=0)
+    balance_date = models.DateField(null=True, blank=True, help_text='Tanggal saldo awal berlaku')
     color = models.CharField(max_length=7, blank=True, default='#3b82f6')
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -147,8 +148,11 @@ class FinanceAccount(models.Model):
     @property
     def current_balance(self):
         from django.db.models import Sum
-        income = self.transactions.filter(type='income').aggregate(t=Sum('amount'))['t'] or 0
-        expense = self.transactions.filter(type='expense').aggregate(t=Sum('amount'))['t'] or 0
+        tx = self.transactions.all()
+        if self.balance_date:
+            tx = tx.filter(date__gte=self.balance_date)
+        income = tx.filter(type='income').aggregate(t=Sum('amount'))['t'] or 0
+        expense = tx.filter(type='expense').aggregate(t=Sum('amount'))['t'] or 0
         return self.initial_balance + income - expense
 
 

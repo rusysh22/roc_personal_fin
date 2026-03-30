@@ -2,11 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Plus, Landmark, Loader2, Trash2, Check, Pencil } from 'lucide-react';
+import { ArrowLeft, Plus, Landmark, Loader2, Trash2, Check, Pencil, Calendar } from 'lucide-react';
 import { getFinanceAccounts, createFinanceAccount, updateFinanceAccount, deleteFinanceAccount } from '@/lib/api';
 import { CurrencyInput } from '@/components/ui/CurrencyInput';
 import { FinanceAccount, FINANCE_ACCOUNT_TYPE_LABELS, FinanceAccountType, BALANCE_TYPE_LABELS, BalanceType } from '@/types';
-import { formatRupiah } from '@/lib/utils';
+import { formatRupiah, formatDate } from '@/lib/utils';
 
 const ACCOUNT_COLORS = ['#3b82f6', '#f59e0b', '#10b981', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#64748b'];
 
@@ -17,7 +17,7 @@ export default function AccountsPage() {
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({ name: '', type: 'bank' as FinanceAccountType, balance_type: 'personal' as BalanceType, initial_balance: '', color: '#3b82f6' });
+  const [form, setForm] = useState({ name: '', type: 'bank' as FinanceAccountType, balance_type: 'personal' as BalanceType, initial_balance: '', balance_date: new Date().toISOString().split('T')[0], color: '#3b82f6' });
   const [deletingId, setDeletingId] = useState<number | null>(null);
 
   const loadAccounts = () => {
@@ -39,7 +39,7 @@ export default function AccountsPage() {
   useEffect(() => { loadAccounts(); }, []);
 
   const resetForm = () => {
-    setForm({ name: '', type: 'bank', balance_type: 'personal', initial_balance: '', color: '#3b82f6' });
+    setForm({ name: '', type: 'bank', balance_type: 'personal', initial_balance: '', balance_date: new Date().toISOString().split('T')[0], color: '#3b82f6' });
     setEditId(null);
     setShowForm(false);
   };
@@ -48,7 +48,8 @@ export default function AccountsPage() {
     setForm({
       name: account.name, type: account.type,
       balance_type: account.balance_type || 'personal',
-      initial_balance: account.initial_balance,
+      initial_balance: String(Math.round(parseFloat(account.initial_balance))),
+      balance_date: account.balance_date || new Date().toISOString().split('T')[0],
       color: account.color,
     });
     setEditId(account.id);
@@ -63,6 +64,7 @@ export default function AccountsPage() {
         name: form.name, type: form.type,
         balance_type: form.balance_type,
         initial_balance: form.initial_balance || '0',
+        balance_date: form.balance_date,
         color: form.color,
       };
       if (editId) await updateFinanceAccount(editId, payload);
@@ -133,6 +135,24 @@ export default function AccountsPage() {
                     className="mobile-input" 
                     placeholder="0" 
                   />
+                </div>
+                <div>
+                  <label className="text-[11px] font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--color-text-muted)' }}>Saldo Per Tanggal</label>
+                  <div className="relative">
+                    <div className="absolute left-3.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-xl bg-teal-50 dark:bg-teal-500/10 flex items-center justify-center">
+                      <Calendar size={14} className="text-teal-500" />
+                    </div>
+                    <input
+                      type="date"
+                      value={form.balance_date}
+                      onChange={(e) => setForm({ ...form, balance_date: e.target.value })}
+                      className="mobile-input"
+                      style={{ paddingLeft: '56px' }}
+                    />
+                  </div>
+                  <p className="text-[10px] mt-1 px-1" style={{ color: 'var(--color-text-muted)' }}>
+                    Transaksi mulai tanggal ini akan dihitung terhadap saldo
+                  </p>
                 </div>
                 <div>
                   <label className="text-[11px] font-semibold uppercase tracking-wider mb-1.5 block" style={{ color: 'var(--color-text-muted)' }}>Warna Ikon</label>
@@ -207,6 +227,7 @@ export default function AccountsPage() {
                       <p className="text-sm font-bold truncate" style={{ color: 'var(--color-text-primary)' }}>{acc.name}</p>
                       <p className="text-[11px]" style={{ color: 'var(--color-text-muted)' }}>
                         {FINANCE_ACCOUNT_TYPE_LABELS[acc.type]} · {acc.balance_type === 'personal' ? '👤 Pribadi' : '🏢 Lainnya'}
+                        {acc.balance_date && <> · per {formatDate(acc.balance_date)}</>}
                       </p>
                     </div>
                     <div className="text-right">

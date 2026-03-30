@@ -1221,3 +1221,16 @@ body {
   border-color: rgba(13, 148, 136, 0.3);
 }
 
+/* --- Marquee / running text for SearchableSelect --- */
+.searchable-select-marquee {
+  display: inline-block;
+  animation: selectMarquee 5s ease-in-out infinite;
+  padding-right: 24px;
+}
+
+@keyframes selectMarquee {
+  0%, 20% { transform: translateX(0); }
+  40%, 60% { transform: translateX(var(--marquee-offset, -30%)); }
+  80%, 100% { transform: translateX(0); }
+}
+

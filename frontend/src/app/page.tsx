@@ -27,6 +27,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [showAccounts, setShowAccounts] = useState(false);
+  const [trendMode, setTrendMode] = useState<'daily' | 'monthly'>('daily');
 
   const fetchDash = async () => {
     try {
@@ -98,15 +99,29 @@ export default function DashboardPage() {
     color: item.category__color || COLORS[idx % COLORS.length],
   }));
 
-  const monthMap = new Map<string, { month: string; income: number; expense: number }>();
+  // Monthly trend data
+  const monthMap = new Map<string, { label: string; income: number; expense: number }>();
   data.monthly_trend.forEach((item) => {
     const key = item.month.slice(0, 7);
-    if (!monthMap.has(key)) monthMap.set(key, { month: key, income: 0, expense: 0 });
+    if (!monthMap.has(key)) monthMap.set(key, { label: key, income: 0, expense: 0 });
     const entry = monthMap.get(key)!;
     if (item.type === 'income') entry.income += parseFloat(item.total);
     else entry.expense += parseFloat(item.total);
   });
-  const areaData = Array.from(monthMap.values()).slice(-6);
+  const monthlyAreaData = Array.from(monthMap.values()).slice(-6);
+
+  // Daily trend data
+  const dayMap = new Map<string, { label: string; income: number; expense: number }>();
+  (data.daily_trend || []).forEach((item) => {
+    const key = item.day.slice(0, 10);
+    if (!dayMap.has(key)) dayMap.set(key, { label: key, income: 0, expense: 0 });
+    const entry = dayMap.get(key)!;
+    if (item.type === 'income') entry.income += parseFloat(item.total);
+    else entry.expense += parseFloat(item.total);
+  });
+  const dailyAreaData = Array.from(dayMap.values());
+
+  const areaData = trendMode === 'daily' ? dailyAreaData : monthlyAreaData;
   const totalPieValue = pieData.reduce((sum, d) => sum + d.value, 0);
 
   const now = new Date();
@@ -202,17 +217,36 @@ export default function DashboardPage() {
         <div className="mobile-card p-4 animate-fade-in-up" style={{ animationDelay: '80ms', opacity: 0 }}>
           <div className="flex items-center justify-between mb-3">
             <div>
-              <h3 className="text-section-title" style={{ color: 'var(--color-text-card-title)' }}>Tren Bulanan</h3>
-              <p className="text-[11px]" style={{ color: 'var(--color-text-muted)' }}>6 bulan terakhir</p>
+              <h3 className="text-section-title" style={{ color: 'var(--color-text-card-title)' }}>Tren Saldo</h3>
+              <p className="text-[11px]" style={{ color: 'var(--color-text-muted)' }}>
+                {trendMode === 'daily' ? 'Bulan ini' : '6 bulan terakhir'}
+              </p>
             </div>
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-1">
-                <div className="w-2 h-2 rounded-full bg-emerald-400" />
-                <span className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>Masuk</span>
+            <div className="flex items-center gap-2">
+              <div className="flex gap-0.5 p-0.5 rounded-xl" style={{ background: 'var(--color-filter-bg)' }}>
+                {(['daily', 'monthly'] as const).map((mode) => (
+                  <button
+                    key={mode}
+                    onClick={() => setTrendMode(mode)}
+                    className="px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all"
+                    style={trendMode === mode
+                      ? { background: 'var(--color-primary)', color: 'white' }
+                      : { color: 'var(--color-text-muted)' }
+                    }
+                  >
+                    {mode === 'daily' ? 'Harian' : 'Bulanan'}
+                  </button>
+                ))}
               </div>
-              <div className="flex items-center gap-1">
-                <div className="w-2 h-2 rounded-full bg-rose-400" />
-                <span className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>Keluar</span>
+              <div className="flex items-center gap-2 ml-1">
+                <div className="flex items-center gap-1">
+                  <div className="w-2 h-2 rounded-full bg-emerald-400" />
+                  <span className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>Masuk</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <div className="w-2 h-2 rounded-full bg-rose-400" />
+                  <span className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>Keluar</span>
+                </div>
               </div>
             </div>
           </div>
@@ -229,9 +263,23 @@ export default function DashboardPage() {
                     <stop offset="95%" stopColor="#fb7185" stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <XAxis dataKey="month" tick={{ fontSize: 10, fill: '#9ca3af' }} axisLine={false} tickLine={false} tickFormatter={(v) => v.slice(5)} />
+                <XAxis
+                  dataKey="label"
+                  tick={{ fontSize: 10, fill: '#9ca3af' }}
+                  axisLine={false}
+                  tickLine={false}
+                  tickFormatter={(v: string) =>
+                    trendMode === 'daily' ? v.slice(8, 10) : v.slice(5)
+                  }
+                />
                 <Tooltip
                   formatter={(value) => formatRupiah(Number(value))}
+                  labelFormatter={(label) => {
+                    const s = String(label);
+                    return trendMode === 'daily'
+                      ? new Date(s).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })
+                      : new Date(s + '-01').toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+                  }}
                   contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.1)', fontSize: '12px' }}
                 />
                 <Area type="monotone" dataKey="income" name="Pemasukan" stroke="#34d399" strokeWidth={2} fill="url(#colorIncome)" />

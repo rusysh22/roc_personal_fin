@@ -80,6 +80,7 @@ export interface FinanceAccount {
   type: 'bank' | 'e_wallet' | 'cash' | 'investment' | 'other';
   balance_type: 'personal' | 'office';
   initial_balance: string;
+  balance_date: string | null;
   current_balance: string;
   color: string;
   is_active: boolean;
@@ -134,6 +135,11 @@ export interface DashboardData {
   }[];
   monthly_trend: {
     month: string;
+    type: string;
+    total: string;
+  }[];
+  daily_trend: {
+    day: string;
     type: string;
     total: string;
   }[];

@@ -30,9 +30,15 @@ export const CurrencyInput: React.FC<CurrencyInputProps> = ({
 
   // Format a raw string or number into a dotted representation
   const formatValue = (val: string | number): string => {
-    const raw = String(val).replace(/\D/g, '');
-    if (!raw) return '';
-    return new Intl.NumberFormat('id-ID').format(parseInt(raw, 10));
+    // Strip decimal portion first (backend sends "2837582.00"), then remove non-digits
+    const stripped = String(val).replace(/\.(\d{2})$/, '').replace(/\D/g, '');
+    if (!stripped) return '';
+    return new Intl.NumberFormat('id-ID').format(parseInt(stripped, 10));
+  };
+
+  // Clean raw value: remove decimal portion before extracting digits
+  const toRawValue = (val: string | number): string => {
+    return String(val).replace(/\.(\d{2})$/, '').replace(/\D/g, '');
   };
 
   // Sync state whenever the external value changes

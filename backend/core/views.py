@@ -10,7 +10,7 @@ from django.contrib.auth.models import User
 from django.core.mail import send_mail
 from django.conf import settings
 from django.db.models import Sum, Q
-from django.db.models.functions import TruncMonth
+from django.db.models.functions import TruncMonth, TruncDate
 from django.http import HttpResponse
 from django.utils import timezone
 from rest_framework import viewsets, status
@@ -47,7 +47,7 @@ class PlanCategoryViewSet(viewsets.ModelViewSet):
     authentication_classes = API_AUTH
 
     def get_queryset(self):
-        return PlanCategory.objects.filter(user=self.request.user, **get_company_filter_kwargs(self.request))
+        return PlanCategory.objects.filter(**get_company_filter_kwargs(self.request))
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user, **get_company_create_kwargs(self.request))
@@ -57,7 +57,7 @@ class PlanSubCategoryViewSet(viewsets.ModelViewSet):
     authentication_classes = API_AUTH
 
     def get_queryset(self):
-        qs = PlanSubCategory.objects.filter(user=self.request.user, **get_company_filter_kwargs(self.request))
+        qs = PlanSubCategory.objects.filter(**get_company_filter_kwargs(self.request))
         category_id = self.request.query_params.get('category')
         if category_id:
             qs = qs.filter(category_id=category_id)
@@ -71,7 +71,7 @@ class PlanViewSet(viewsets.ModelViewSet):
     authentication_classes = API_AUTH
 
     def get_queryset(self):
-        return Plan.objects.filter(user=self.request.user, **get_company_filter_kwargs(self.request))
+        return Plan.objects.filter(**get_company_filter_kwargs(self.request))
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user, **get_company_create_kwargs(self.request))
@@ -81,7 +81,7 @@ class NoteCategoryViewSet(viewsets.ModelViewSet):
     authentication_classes = API_AUTH
 
     def get_queryset(self):
-        return NoteCategory.objects.filter(user=self.request.user, **get_company_filter_kwargs(self.request))
+        return NoteCategory.objects.filter(**get_company_filter_kwargs(self.request))
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user, **get_company_create_kwargs(self.request))
@@ -91,7 +91,7 @@ class NoteViewSet(viewsets.ModelViewSet):
     authentication_classes = API_AUTH
 
     def get_queryset(self):
-        qs = Note.objects.filter(user=self.request.user, **get_company_filter_kwargs(self.request))
+        qs = Note.objects.filter(**get_company_filter_kwargs(self.request))
         category_id = self.request.query_params.get('category')
         if category_id:
             qs = qs.filter(category_id=category_id)
@@ -154,20 +154,6 @@ class CompanyMemberViewSet(viewsets.ModelViewSet):
             
         except User.DoesNotExist:
             return Response({'error': 'User not found. Invite them to sign up first.'}, status=status.HTTP_404_NOT_FOUND)
-
-class FinanceAccountViewSet(viewsets.ModelViewSet):
-    serializer_class = FinanceAccountSerializer
-    authentication_classes = API_AUTH
-
-    def get_queryset(self):
-        qs = FinanceAccount.objects.filter(user=self.request.user)
-        is_active = self.request.query_params.get('is_active')
-        if is_active is not None:
-            qs = qs.filter(is_active=is_active.lower() == 'true')
-        return qs
-
-    def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
 
 
 # ==================== AUTH VIEWS ====================
@@ -463,8 +449,20 @@ def auth_refresh_token(request):
 
 
 def get_company_filter_kwargs(request):
+    """Return filter kwargs for company-aware queries.
+    If a company is selected: filter by company only (all members see shared data).
+    If no company: filter by user only (personal data).
+    """
     company_id = request.headers.get('X-Company-Id')
-    return {'company_id': company_id} if company_id else {'company__isnull': True}
+    if company_id:
+        # Verify the user is a member of this company
+        is_member = CompanyMember.objects.filter(
+            company_id=company_id, user=request.user
+        ).exists()
+        if is_member:
+            return {'company_id': company_id}
+        # Not a member — fall back to personal data
+    return {'user': request.user, 'company__isnull': True}
 
 def get_company_create_kwargs(request):
     company_id = request.headers.get('X-Company-Id')
@@ -475,7 +473,7 @@ class CategoryViewSet(viewsets.ModelViewSet):
     authentication_classes = API_AUTH
 
     def get_queryset(self):
-        qs = Category.objects.filter(user=self.request.user, **get_company_filter_kwargs(self.request))
+        qs = Category.objects.filter(**get_company_filter_kwargs(self.request))
         cat_type = self.request.query_params.get('type')
         if cat_type:
             qs = qs.filter(type=cat_type)
@@ -490,7 +488,7 @@ class TransactionViewSet(viewsets.ModelViewSet):
     authentication_classes = API_AUTH
 
     def get_queryset(self):
-        qs = Transaction.objects.filter(user=self.request.user, **get_company_filter_kwargs(self.request))
+        qs = Transaction.objects.filter(**get_company_filter_kwargs(self.request))
         params = self.request.query_params
 
         if params.get('type'):
@@ -517,7 +515,7 @@ class BudgetViewSet(viewsets.ModelViewSet):
     authentication_classes = API_AUTH
 
     def get_queryset(self):
-        qs = Budget.objects.filter(user=self.request.user, **get_company_filter_kwargs(self.request))
+        qs = Budget.objects.filter(**get_company_filter_kwargs(self.request))
         params = self.request.query_params
 
         month = params.get('month', date.today().month)
@@ -541,7 +539,6 @@ class BudgetViewSet(viewsets.ModelViewSet):
 
         for budget in queryset:
             spent = Transaction.objects.filter(
-                user=request.user,
                 **get_company_filter_kwargs(request),
                 category=budget.category,
                 type='expense',
@@ -555,7 +552,6 @@ class BudgetViewSet(viewsets.ModelViewSet):
             # calculate spent specifically for today if the budget is for the current month
             if month == today.month and year == today.year:
                 daily_spent = Transaction.objects.filter(
-                    user=request.user,
                     **get_company_filter_kwargs(request),
                     category=budget.category,
                     type='expense',
@@ -584,7 +580,6 @@ def dashboard(request):
     year = int(request.query_params.get('year', today.year))
 
     transactions = Transaction.objects.filter(
-        user=request.user,
         **get_company_filter_kwargs(request),
         date__month=month,
         date__year=year,
@@ -615,16 +610,25 @@ def dashboard(request):
 
     # Monthly trend (last 6 months)
     monthly_trend = list(
-        Transaction.objects.filter(user=request.user, **get_company_filter_kwargs(request))
+        Transaction.objects.filter(**get_company_filter_kwargs(request))
         .annotate(month=TruncMonth('date'))
         .values('month', 'type')
         .annotate(total=Sum('amount'))
         .order_by('month')
     )
 
+    # Daily trend (current selected month)
+    daily_trend = list(
+        transactions
+        .annotate(day=TruncDate('date'))
+        .values('day', 'type')
+        .annotate(total=Sum('amount'))
+        .order_by('day')
+    )
+
     recent_transactions = transactions.order_by('-date', '-created_at')[:5]
     
-    accounts_qs = FinanceAccount.objects.filter(user=request.user, **get_company_filter_kwargs(request), is_active=True)
+    accounts_qs = FinanceAccount.objects.filter(**get_company_filter_kwargs(request), is_active=True)
     accounts_data = FinanceAccountSerializer(accounts_qs, many=True).data
 
     # Calculate total saldo from finance accounts (current_balance includes initial + transactions)
@@ -650,6 +654,7 @@ def dashboard(request):
         'recent_transactions': TransactionSerializer(recent_transactions, many=True).data,
         'spending_by_category': spending_by_category,
         'monthly_trend': monthly_trend,
+        'daily_trend': daily_trend,
     })
 
 
@@ -683,7 +688,7 @@ class DebtViewSet(viewsets.ModelViewSet):
     authentication_classes = API_AUTH
 
     def get_queryset(self):
-        qs = Debt.objects.filter(user=self.request.user, **get_company_filter_kwargs(self.request))
+        qs = Debt.objects.filter(**get_company_filter_kwargs(self.request))
         is_active = self.request.query_params.get('is_active')
         if is_active is not None:
             qs = qs.filter(is_active=is_active.lower() == 'true')
@@ -700,7 +705,7 @@ class SavingsGoalViewSet(viewsets.ModelViewSet):
     authentication_classes = API_AUTH
 
     def get_queryset(self):
-        qs = SavingsGoal.objects.filter(user=self.request.user, **get_company_filter_kwargs(self.request))
+        qs = SavingsGoal.objects.filter(**get_company_filter_kwargs(self.request))
         is_completed = self.request.query_params.get('is_completed')
         if is_completed is not None:
             qs = qs.filter(is_completed=is_completed.lower() == 'true')
@@ -723,7 +728,7 @@ class SavingsGoalViewSet(viewsets.ModelViewSet):
 @authentication_classes(API_AUTH)
 def export_transactions_csv(request):
     """Export all user transactions as CSV."""
-    transactions = Transaction.objects.filter(user=request.user, **get_company_filter_kwargs(request)).select_related('category')
+    transactions = Transaction.objects.filter(**get_company_filter_kwargs(request)).select_related('category')
 
     response = HttpResponse(content_type='text/csv')
     response['Content-Disposition'] = f'attachment; filename="transaksi_{request.user.username}_{date.today().isoformat()}.csv"'
@@ -757,7 +762,7 @@ class FinanceAccountViewSet(viewsets.ModelViewSet):
     authentication_classes = API_AUTH
 
     def get_queryset(self):
-        qs = FinanceAccount.objects.filter(user=self.request.user, **get_company_filter_kwargs(self.request))
+        qs = FinanceAccount.objects.filter(**get_company_filter_kwargs(self.request))
         is_active = self.request.query_params.get('is_active')
         if is_active is not None:
             qs = qs.filter(is_active=is_active.lower() == 'true')
