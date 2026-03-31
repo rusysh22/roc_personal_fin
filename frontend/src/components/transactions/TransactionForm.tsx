@@ -62,6 +62,7 @@ export function TransactionForm({ onSuccess, onCancel, transaction }: Transactio
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>((transaction?.payment_method as PaymentMethod) || 'cash');
   const [balanceType, setBalanceType] = useState<BalanceType>(transaction?.balance_type || 'personal');
   const [date, setDate] = useState(transaction?.date || new Date().toISOString().split('T')[0]);
+  const [installments, setInstallments] = useState(transaction?.installments || 1);
 
   // Category search and show all states
   const [catSearch, setCatSearch] = useState('');
@@ -131,6 +132,9 @@ export function TransactionForm({ onSuccess, onCancel, transaction }: Transactio
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [paymentMethod, accounts]);
 
+  const selectedAccount = accounts.find(a => a.id === selectedAccountId);
+  const isCreditCard = selectedAccount?.type === 'credit_card';
+
   const handleSubmit = async () => {
     if (!amountNumber || amountNumber <= 0) {
       showAlert('Masukkan jumlah yang valid', { variant: 'warning' });
@@ -154,6 +158,7 @@ export function TransactionForm({ onSuccess, onCancel, transaction }: Transactio
         payment_method: paymentMethod,
         balance_type: balanceType,
         date,
+        installments: isCreditCard ? installments : 1,
       };
       if (isEditing) {
         await updateTransaction(transaction.id, payload);
@@ -389,6 +394,29 @@ export function TransactionForm({ onSuccess, onCancel, transaction }: Transactio
             ))}
           </div>
         </div>
+
+        {/* Installments selector - only for credit card expenses */}
+        {type === 'expense' && isCreditCard && (
+          <div className="px-4 pb-3 border-t pt-3" style={{ borderColor: 'var(--color-border-card)' }}>
+            <p className="text-[11px] font-bold uppercase tracking-wider mb-2" style={{ color: 'var(--color-section-label)' }}>Cicilan (Tenor)</p>
+            <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
+              {[1, 3, 6, 12, 24].map((n) => (
+                <button
+                  key={n}
+                  onClick={() => setInstallments(n)}
+                  className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap shrink-0 transition-all ${installments === n ? 'text-white shadow-sm' : ''
+                    }`}
+                  style={installments === n
+                    ? { background: typeGradient }
+                    : { background: 'var(--color-bg-card)', color: 'var(--color-text-secondary)', border: '1px solid var(--color-border-card)' }
+                  }
+                >
+                  {n}x {n === 1 ? '(Lunas)' : ''}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Notes + Date - Fixed above Numpad */}

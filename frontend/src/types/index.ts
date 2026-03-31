@@ -85,6 +85,9 @@ export interface FinanceAccount {
   current_balance: string;
   color: string;
   is_active: boolean;
+  include_in_dashboard: boolean;
+  statement_day: number | null;
+  due_day: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -100,6 +103,7 @@ export interface Transaction {
   description: string;
   payment_method: string;
   balance_type: 'personal' | 'office';
+  installments: number;
   date: string;
   created_at: string;
   updated_at: string;

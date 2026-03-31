@@ -58,8 +58,10 @@ class FinanceAccountSerializer(serializers.ModelSerializer):
     class Meta:
         model = FinanceAccount
         fields = [
-            'id', 'name', 'type', 'balance_type', 'initial_balance', 'balance_date',
-            'current_balance', 'color', 'is_active', 'created_at', 'updated_at'
+            'id', 'user', 'company', 'name', 'type', 'balance_type', 
+            'initial_balance', 'balance_date', 'current_balance', 'color', 
+            'is_active', 'include_in_dashboard', 'statement_day', 'due_day',
+            'created_at', 'updated_at'
         ]
         read_only_fields = ['created_at', 'updated_at']
 
@@ -114,12 +116,11 @@ class TransactionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Transaction
         fields = [
-            'id', 'type', 'category', 'category_name', 
-            'finance_account', 'finance_account_name',
-            'amount', 'description', 'payment_method', 'balance_type',
-            'date', 'created_at', 'updated_at',
+            'id', 'user', 'company', 'company_name', 'type', 'category', 'category_name', 
+            'finance_account', 'finance_account_name', 'amount', 'description', 
+            'payment_method', 'balance_type', 'installments', 'date', 'created_at', 'updated_at'
         ]
-        read_only_fields = ['created_at', 'updated_at']
+        read_only_fields = ['user', 'created_at', 'updated_at']
 
 
 class BudgetSerializer(serializers.ModelSerializer):

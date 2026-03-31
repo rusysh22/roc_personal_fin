@@ -138,6 +138,9 @@ class FinanceAccount(models.Model):
     balance_date = models.DateField(null=True, blank=True, help_text='Tanggal saldo awal berlaku')
     color = models.CharField(max_length=7, blank=True, default='#3b82f6')
     is_active = models.BooleanField(default=True)
+    include_in_dashboard = models.BooleanField(default=True)
+    statement_day = models.IntegerField(null=True, blank=True, help_text='Tanggal cetak statement (1-31)')
+    due_day = models.IntegerField(null=True, blank=True, help_text='Tanggal jatuh tempo (1-31)')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -187,6 +190,7 @@ class Transaction(models.Model):
     description = models.CharField(max_length=255)
     payment_method = models.CharField(max_length=20, choices=PAYMENT_METHODS, default='cash')
     balance_type = models.CharField(max_length=10, choices=BALANCE_TYPES, default='personal')
+    installments = models.IntegerField(default=1, help_text='Jumlah cicilan (1x, 3x, dst)')
     date = models.DateField()
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

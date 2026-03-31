@@ -544,7 +544,50 @@ class TransactionViewSet(viewsets.ModelViewSet):
         return qs
 
     def perform_create(self, serializer):
-        serializer.save(user=self.request.user, **get_company_create_kwargs(self.request))
+        transaction = serializer.save(user=self.request.user, **get_company_create_kwargs(self.request))
+        
+        # Installment auto-generation logic
+        installments = transaction.installments
+        if installments > 1 and transaction.type == 'expense' and transaction.payment_method == 'credit_card':
+            from dateutil.relativedelta import relativedelta
+            from decimal import Decimal
+            
+            total_amount = transaction.amount
+            # Split amount among installments
+            installment_amount = (total_amount / Decimal(str(installments))).quantize(Decimal('0.01'))
+            
+            orig_description = transaction.description
+            
+            # Update the first installment (the one just created)
+            transaction.amount = installment_amount
+            transaction.description = f"{orig_description} (Cicilan 1/{installments})"
+            transaction.save()
+            
+            # Create the remaining installments
+            accumulated = installment_amount
+            base_date = transaction.date
+            for i in range(1, installments):
+                current_installment_amount = installment_amount
+                # Adjust last installment for any rounding remainder
+                if i == installments - 1:
+                    current_installment_amount = total_amount - accumulated
+                
+                accumulated += current_installment_amount
+                next_date = base_date + relativedelta(months=i)
+                
+                Transaction.objects.create(
+                    user=transaction.user,
+                    company=transaction.company,
+                    type=transaction.type,
+                    category=transaction.category,
+                    finance_account=transaction.finance_account,
+                    amount=current_installment_amount,
+                    description=f"{orig_description} (Cicilan {i+1}/{installments})",
+                    payment_method=transaction.payment_method,
+                    balance_type=transaction.balance_type,
+                    installments=1, # Sub-transactions are single markers
+                    date=next_date
+                )
 
 
 class BudgetViewSet(viewsets.ModelViewSet):
@@ -672,10 +715,10 @@ def dashboard(request):
 
     # Calculate saldo from annotated balances (no extra queries)
     personal_account_balance = sum(
-        acc.computed_balance for acc in accounts_list if acc.balance_type == 'personal'
+        acc.computed_balance for acc in accounts_list if acc.balance_type == 'personal' and acc.include_in_dashboard
     )
     office_account_balance = sum(
-        acc.computed_balance for acc in accounts_list if acc.balance_type == 'office'
+        acc.computed_balance for acc in accounts_list if acc.balance_type == 'office' and acc.include_in_dashboard
     )
     total_account_balance = personal_account_balance + office_account_balance
     has_accounts = len(accounts_list) > 0

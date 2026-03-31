@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { getDashboard, getCompanies } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
-import { DashboardData, Company } from '@/types';
+import { DashboardData, Company, FINANCE_ACCOUNT_TYPE_LABELS, FinanceAccountType } from '@/types';
 import { formatRupiah, formatDate } from '@/lib/utils';
 import { TrendingDown, Wallet, Building2, User, ArrowUpRight, ArrowDownRight, ChevronRight, Plus, ChevronDown } from 'lucide-react';
 import Link from 'next/link';
@@ -126,6 +126,13 @@ export default function DashboardPage() {
 
   const now = new Date();
   const monthName = now.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+
+  const groupedAccounts = (data.accounts || []).reduce((groups: Record<string, any[]>, acc) => {
+    const type = acc.type || 'other';
+    if (!groups[type]) groups[type] = [];
+    groups[type].push(acc);
+    return groups;
+  }, {});
 
   return (
     <div className="pb-2">
@@ -360,24 +367,38 @@ export default function DashboardPage() {
 
       {/* Rincian Akun Modal */}
       <Modal isOpen={showAccounts} onClose={() => setShowAccounts(false)} title="Rincian Saldo Akun / Bank">
-        <div className="space-y-3">
-          {data.accounts && data.accounts.length > 0 ? (
-            data.accounts.map((acc) => (
-              <div key={acc.id} className="flex items-center justify-between p-4 rounded-2xl border" style={{ borderColor: 'var(--color-border-card)', background: 'var(--color-bg-card)' }}>
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center shadow-sm" style={{ background: acc.color || '#3b82f6' }}>
-                    <Wallet size={16} className="text-white" />
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-bold" style={{ color: 'var(--color-text-card-title)' }}>{acc.name}</h4>
-                    <p className="text-[11px] uppercase tracking-wider font-semibold" style={{ color: 'var(--color-text-muted)' }}>
-                      {acc.type === 'bank' ? 'Bank' : acc.type === 'cash' ? 'Tunai' : acc.type === 'e_wallet' ? 'E-Wallet' : 'Lainnya'}
-                      {acc.balance_type && <span> · {acc.balance_type === 'personal' ? 'Pribadi' : 'Lainnya'}</span>}
-                    </p>
-                  </div>
+        <div className="space-y-6 max-h-[60vh] overflow-y-auto pr-1">
+          {Object.keys(groupedAccounts).length > 0 ? (
+            Object.entries(groupedAccounts).map(([type, typeAccounts]) => (
+              <div key={type} className="space-y-3">
+                <div className="flex items-center gap-2 px-1">
+                  <div className="w-1 h-3 rounded-full bg-teal-500/50" />
+                  <h3 className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                    {FINANCE_ACCOUNT_TYPE_LABELS[type as FinanceAccountType] || 'Lainnya'}
+                  </h3>
+                  <div className="h-[1px] flex-1 bg-slate-100 dark:bg-slate-800/50" />
+                  <span className="text-[9px] font-medium text-slate-400">{typeAccounts.length}</span>
                 </div>
-                <div className="text-right">
-                  <p className="text-sm font-bold" style={{ color: 'var(--color-text-primary)' }}>{formatRupiah(acc.current_balance)}</p>
+                <div className="space-y-2">
+                  {typeAccounts.map((acc) => (
+                    <div key={acc.id} className="flex items-center justify-between p-3.5 rounded-2xl border" style={{ borderColor: 'var(--color-border-card)', background: 'var(--color-bg-card)' }}>
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-xl flex items-center justify-center shadow-sm" style={{ background: acc.color || '#3b82f6' }}>
+                          <Wallet size={15} className="text-white" />
+                        </div>
+                        <div>
+                          <h4 className="text-sm font-bold truncate max-w-[120px]" style={{ color: 'var(--color-text-card-title)' }}>{acc.name}</h4>
+                          <p className="text-[10px] uppercase tracking-wider font-semibold" style={{ color: 'var(--color-text-muted)' }}>
+                            {FINANCE_ACCOUNT_TYPE_LABELS[acc.type as FinanceAccountType] || 'Lainnya'}
+                            {acc.balance_type && <span> · {acc.balance_type === 'personal' ? 'Pribadi' : 'Lainnya'}</span>}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-bold" style={{ color: 'var(--color-text-primary)' }}>{formatRupiah(acc.current_balance)}</p>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             ))
