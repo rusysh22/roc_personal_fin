@@ -5,6 +5,7 @@ backend/**/__pycache__/
 backend/*.pyc
 backend/db.sqlite3
 backend/.env
+client_secret_*.json
 
 # Node
 frontend/node_modules/
