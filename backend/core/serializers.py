@@ -66,6 +66,10 @@ class FinanceAccountSerializer(serializers.ModelSerializer):
         read_only_fields = ['created_at', 'updated_at']
 
     def get_current_balance(self, obj):
+        # Use annotated value (single JOIN query) when no balance_date restriction
+        if not obj.balance_date and hasattr(obj, 'computed_balance') and obj.computed_balance is not None:
+            return str(obj.computed_balance)
+        # Fall back to property for accounts with balance_date (filters from a specific date)
         return str(obj.current_balance)
 
 

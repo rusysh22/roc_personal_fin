@@ -9,7 +9,7 @@ from django.contrib.auth import authenticate
 from django.contrib.auth.models import User
 from django.core.mail import send_mail
 from django.conf import settings
-from django.db.models import Sum, Q, Value, DecimalField
+from django.db.models import Sum, Q, Value, DecimalField, F
 from django.db.models.functions import TruncMonth, TruncDate, Coalesce
 from django.http import HttpResponse
 from django.utils import timezone
@@ -470,8 +470,20 @@ def get_company_create_kwargs(request):
 
 
 def annotate_account_balance(qs):
-    """Pass-through; current_balance property handles balance_date logic in Python."""
-    return qs
+    """Annotate FinanceAccount queryset with computed_balance using reverse relation.
+    Falls back to current_balance property in serializer for accounts with balance_date.
+    """
+    return qs.annotate(
+        _tx_income=Coalesce(
+            Sum('transactions__amount', filter=Q(transactions__type='income')),
+            Value(0), output_field=DecimalField()
+        ),
+        _tx_expense=Coalesce(
+            Sum('transactions__amount', filter=Q(transactions__type='expense')),
+            Value(0), output_field=DecimalField()
+        ),
+        computed_balance=F('initial_balance') + F('_tx_income') - F('_tx_expense'),
+    )
 
 class CategoryViewSet(viewsets.ModelViewSet):
     serializer_class = CategorySerializer
@@ -660,9 +672,10 @@ def dashboard(request):
         .order_by('-total')
     )
 
-    # Monthly trend (last 6 months)
+    # Monthly trend (last 6 months only)
+    six_months_ago = date(year, month, 1) - timedelta(days=150)
     monthly_trend = list(
-        Transaction.objects.filter(**get_company_filter_kwargs(request))
+        Transaction.objects.filter(**get_company_filter_kwargs(request), date__gte=six_months_ago)
         .annotate(month=TruncMonth('date'))
         .values('month', 'type')
         .annotate(total=Sum('amount'))
@@ -681,15 +694,22 @@ def dashboard(request):
     recent_transactions = transactions.select_related('category', 'finance_account').order_by('-date', '-created_at')[:5]
 
     accounts_list = list(
-        FinanceAccount.objects.filter(**get_company_filter_kwargs(request), is_active=True)
+        annotate_account_balance(
+            FinanceAccount.objects.filter(**get_company_filter_kwargs(request), is_active=True)
+        )
     )
     accounts_data = FinanceAccountSerializer(accounts_list, many=True).data
 
+    def _balance(acc):
+        if not acc.balance_date and hasattr(acc, 'computed_balance') and acc.computed_balance is not None:
+            return acc.computed_balance
+        return acc.current_balance
+
     personal_account_balance = sum(
-        acc.current_balance for acc in accounts_list if acc.balance_type == 'personal' and acc.include_in_dashboard
+        _balance(acc) for acc in accounts_list if acc.balance_type == 'personal' and acc.include_in_dashboard
     )
     office_account_balance = sum(
-        acc.current_balance for acc in accounts_list if acc.balance_type == 'office' and acc.include_in_dashboard
+        _balance(acc) for acc in accounts_list if acc.balance_type == 'office' and acc.include_in_dashboard
     )
     total_account_balance = personal_account_balance + office_account_balance
     has_accounts = len(accounts_list) > 0

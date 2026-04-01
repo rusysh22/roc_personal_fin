@@ -197,6 +197,12 @@ class Transaction(models.Model):
 
     class Meta:
         ordering = ['-date', '-created_at']
+        indexes = [
+            models.Index(fields=['user', 'date'], name='tx_user_date_idx'),
+            models.Index(fields=['company', 'date'], name='tx_company_date_idx'),
+            models.Index(fields=['finance_account', 'type'], name='tx_account_type_idx'),
+            models.Index(fields=['date'], name='tx_date_idx'),
+        ]
 
     def __str__(self):
         return f"{self.description} - Rp {self.amount:,.0f}"
