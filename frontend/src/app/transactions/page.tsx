@@ -1,9 +1,12 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, lazy, Suspense } from 'react';
 import { getTransactions, deleteTransaction } from '@/lib/api';
 import { Transaction, PAYMENT_METHOD_LABELS, BALANCE_TYPE_LABELS, PaymentMethod, BalanceType } from '@/types';
-import { TransactionForm } from '@/components/transactions/TransactionForm';
+
+const TransactionForm = lazy(() =>
+  import('@/components/transactions/TransactionForm').then(m => ({ default: m.TransactionForm }))
+);
 import { SwipeableRow } from '@/components/ui/SwipeableRow';
 import { Modal } from '@/components/ui/Modal';
 import { formatRupiah, formatDate } from '@/lib/utils';
@@ -471,14 +474,16 @@ export default function TransactionsPage() {
         <Plus size={22} />
       </button>
 
-      {/* Full-page form overlay */}
+      {/* Full-page form overlay — lazy loaded */}
       {showForm && (
         <div className="fullpage-overlay">
-          <TransactionForm
-            transaction={editingTransaction}
-            onSuccess={handleFormSuccess}
-            onCancel={handleFormClose}
-          />
+          <Suspense fallback={<div className="flex items-center justify-center h-full"><div className="w-8 h-8 border-2 border-[var(--color-primary)] border-t-transparent rounded-full animate-spin" /></div>}>
+            <TransactionForm
+              transaction={editingTransaction}
+              onSuccess={handleFormSuccess}
+              onCancel={handleFormClose}
+            />
+          </Suspense>
         </div>
       )}
 

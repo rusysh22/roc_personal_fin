@@ -1,20 +1,23 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, lazy, Suspense } from 'react';
 import { useRouter } from 'next/navigation';
 import { getDashboard, getCompanies } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { DashboardData, Company, FINANCE_ACCOUNT_TYPE_LABELS, FinanceAccountType } from '@/types';
-import { formatRupiah, formatDate } from '@/lib/utils';
+import { formatRupiah, formatDate, profilePhotoUrl } from '@/lib/utils';
 import { TrendingDown, Wallet, Building2, User, ArrowUpRight, ArrowDownRight, ChevronRight, Plus, ChevronDown } from 'lucide-react';
 import Link from 'next/link';
 import {
   AreaChart, Area, XAxis, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell,
 } from 'recharts';
-import { TransactionForm } from '@/components/transactions/TransactionForm';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { Modal } from '@/components/ui/Modal';
+
+const TransactionForm = lazy(() =>
+  import('@/components/transactions/TransactionForm').then(m => ({ default: m.TransactionForm }))
+);
 
 const COLORS = ['#0d9488', '#f472b6', '#34d399', '#fbbf24', '#60a5fa', '#2dd4bf', '#fb7185', '#14b8a6'];
 
@@ -142,7 +145,7 @@ export default function DashboardPage() {
           <div className="flex items-center gap-2">
             <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center font-bold text-white uppercase overflow-hidden shrink-0">
               {user?.profile_photo ? (
-                <img src={user.profile_photo} alt="Profile" className="w-full h-full object-cover" />
+                <img src={profilePhotoUrl(user.profile_photo, 80)!} alt="Profile" className="w-full h-full object-cover" width={40} height={40} />
               ) : (
                 user?.first_name ? user.first_name.charAt(0) : user?.username?.charAt(0) || 'U'
               )}
@@ -412,17 +415,19 @@ export default function DashboardPage() {
         </div>
       </Modal>
 
-      {/* Full-page form overlay identical to the transactions page */}
+      {/* Full-page form overlay — lazy loaded so categories/accounts not fetched on mount */}
       {showForm && (
         <div className="fullpage-overlay">
-          <TransactionForm
-            onSuccess={() => {
-              setShowForm(false);
-              setLoading(true);
-              getDashboard().then(res => setData(res.data)).finally(() => setLoading(false));
-            }}
-            onCancel={() => setShowForm(false)}
-          />
+          <Suspense fallback={<div className="flex items-center justify-center h-full"><div className="w-8 h-8 border-2 border-[var(--color-primary)] border-t-transparent rounded-full animate-spin" /></div>}>
+            <TransactionForm
+              onSuccess={() => {
+                setShowForm(false);
+                setLoading(true);
+                getDashboard().then(res => setData(res.data)).finally(() => setLoading(false));
+              }}
+              onCancel={() => setShowForm(false)}
+            />
+          </Suspense>
         </div>
       )}
 

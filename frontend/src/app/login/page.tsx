@@ -149,7 +149,7 @@ export default function LoginPage() {
 
             {/* Forgot Password */}
             <div className="login-forgot-row">
-              <Link href="/forgot-password" className="login-forgot-link">
+              <Link href="/forgot-password" prefetch={false} className="login-forgot-link">
                 Lupa password?
               </Link>
             </div>

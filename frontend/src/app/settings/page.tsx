@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { profilePhotoUrl } from '@/lib/utils';
 
 interface SettingRowProps {
   icon: React.ReactNode;
@@ -124,7 +125,7 @@ export default function SettingsPage() {
               <div className="w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 text-xl font-bold text-white overflow-hidden"
                 style={{ background: 'linear-gradient(135deg, var(--color-primary-dark), var(--color-primary))' }}>
                 {user?.profile_photo ? (
-                  <img src={user.profile_photo} alt="Profile" className="w-full h-full object-cover" />
+                  <img src={profilePhotoUrl(user.profile_photo, 112)!} alt="Profile" className="w-full h-full object-cover" width={56} height={56} />
                 ) : (
                   userInitial
                 )}

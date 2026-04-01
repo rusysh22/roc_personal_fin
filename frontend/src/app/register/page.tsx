@@ -162,7 +162,7 @@ export default function RegisterPage() {
 
         <p className="text-center text-sm mt-6" style={{ color: 'var(--color-text-muted)' }}>
           Sudah punya akun?{' '}
-          <Link href="/login" className="font-bold" style={{ color: 'var(--color-primary)' }}>
+          <Link href="/login" prefetch={false} className="font-bold" style={{ color: 'var(--color-primary)' }}>
             Masuk
           </Link>
         </p>

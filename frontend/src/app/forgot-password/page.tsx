@@ -93,7 +93,7 @@ export default function ForgotPasswordPage() {
       >
         <div className="absolute top-[-20px] right-[-20px] w-[120px] h-[120px] bg-white/10 rounded-full" />
         <div className="px-6 relative z-10">
-          <Link href="/login" className="inline-flex items-center gap-1 text-white/80 text-sm mb-4 touch-feedback rounded-lg px-2 py-1 -ml-2">
+          <Link href="/login" prefetch={false} className="inline-flex items-center gap-1 text-white/80 text-sm mb-4 touch-feedback rounded-lg px-2 py-1 -ml-2">
             <ArrowLeft size={16} /> Kembali
           </Link>
           <div className="w-14 h-14 rounded-2xl bg-white/20 flex items-center justify-center mb-4 backdrop-blur-sm border border-white/20">

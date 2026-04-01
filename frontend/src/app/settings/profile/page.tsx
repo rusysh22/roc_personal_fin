@@ -9,6 +9,7 @@ import {
 import { useAuth } from '@/contexts/AuthContext';
 import { updateProfile } from '@/lib/api';
 import { ImageCropper } from '@/components/ui/ImageCropper';
+import { profilePhotoUrl } from '@/lib/utils';
 
 interface ToastMessage {
   type: 'success' | 'error';
@@ -232,10 +233,11 @@ export default function ProfilePage() {
                   }}
                 >
                   {user?.profile_photo ? (
-                    <img 
-                      src={user.profile_photo} 
-                      alt="Profile" 
+                    <img
+                      src={profilePhotoUrl(user.profile_photo, 200)!}
+                      alt="Profile"
                       className="w-full h-full object-cover"
+                      width={100} height={100}
                     />
                   ) : (
                     userInitial
