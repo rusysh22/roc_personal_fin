@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import { authMe, authLogout } from '@/lib/api';
+import { authMe, authLogout, getDashboard, getCompanies, getTransactions, getBudgets, getNoteCategories } from '@/lib/api';
 
 interface User {
   id: number;
@@ -11,6 +11,25 @@ interface User {
   last_name: string;
   profile_photo: string | null;
 }
+
+// In-memory prefetch cache — populated as soon as a token exists,
+// so each page's data is ready (or nearly ready) by the time it renders.
+export const prefetchCache: {
+  dashboard?: Promise<unknown>;
+  companies?: Promise<unknown>;
+  transactions?: Promise<unknown>;
+  budgets?: Promise<unknown>;
+  noteCategories?: Promise<unknown>;
+  clear: () => void;
+} = {
+  clear() {
+    delete this.dashboard;
+    delete this.companies;
+    delete this.transactions;
+    delete this.budgets;
+    delete this.noteCategories;
+  },
+};
 
 interface AuthContextType {
   user: User | null;
@@ -41,11 +60,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLoading(false);
       return;
     }
+    // Start prefetching all page data in parallel with auth check,
+    // so data is ready (or nearly ready) by the time each page renders.
+    if (!prefetchCache.dashboard) {
+      prefetchCache.dashboard = getDashboard().catch(() => null);
+      prefetchCache.companies = getCompanies().catch(() => null);
+      prefetchCache.transactions = getTransactions({}).catch(() => null);
+      prefetchCache.budgets = getBudgets({}).catch(() => null);
+      prefetchCache.noteCategories = getNoteCategories().catch(() => null);
+    }
     try {
       const res = await authMe();
       setUser(res.data);
     } catch {
       setUser(null);
+      prefetchCache.clear();
       localStorage.removeItem('access_token');
       localStorage.removeItem('refresh_token');
     } finally {
@@ -76,6 +105,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch {
       // ignore
     }
+    prefetchCache.clear();
     setUser(null);
     localStorage.removeItem('access_token');
     localStorage.removeItem('refresh_token');

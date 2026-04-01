@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { getBudgets, createBudget, updateBudget, deleteBudget, getCategories, getPlans, createPlan, updatePlan, deletePlan, patchPlan, getPlanCategories, getPlanSubCategories, createPlanCategory, createPlanSubCategory } from '@/lib/api';
+import { prefetchCache } from '@/contexts/AuthContext';
 import { Budget, Category, Plan, PlanCategory, PlanSubCategory } from '@/types';
 import { Modal } from '@/components/ui/Modal';
 import { CurrencyInput } from '@/components/ui/CurrencyInput';
@@ -54,12 +55,17 @@ export default function BudgetsPage() {
     }
   };
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (isFirst = false) => {
     setLoading(true);
     try {
       if (activeTab === 'budget') {
-        const res = await getBudgets({ month, year });
-        setBudgets(res.data.results || res.data);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const promise: Promise<any> = (isFirst && prefetchCache.budgets)
+          ? prefetchCache.budgets
+          : getBudgets({ month, year });
+        if (isFirst) prefetchCache.budgets = undefined;
+        const res = await promise;
+        if (res) setBudgets(res.data?.results ?? res.data ?? []);
       } else {
         const res = await getPlans();
         setPlans(res.data.results || res.data);
@@ -71,13 +77,18 @@ export default function BudgetsPage() {
     }
   }, [month, year, activeTab]);
 
+  const isFirstRender = useCallback(() => month === new Date().getMonth() + 1 && year === new Date().getFullYear(), [month, year]);
+
   useEffect(() => {
-    fetchData();
-    if (categories.length === 0) {
-      getCategories('expense').then((res) => setCategories(res.data.results || res.data));
-    }
-    fetchPlanMasterData();
-  }, [fetchData]);
+    // Run all initial fetches in parallel
+    Promise.all([
+      fetchData(isFirstRender()),
+      categories.length === 0
+        ? getCategories('expense').then((res) => setCategories(res.data.results || res.data))
+        : Promise.resolve(),
+      fetchPlanMasterData(),
+    ]).catch(console.error);
+  }, [fetchData]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ===== Budget Handlers =====
   const handleSaveBudget = async (e: React.FormEvent) => {

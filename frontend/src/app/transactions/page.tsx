@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, lazy, Suspense } from 'react';
 import { getTransactions, deleteTransaction } from '@/lib/api';
+import { prefetchCache } from '@/contexts/AuthContext';
 import { Transaction, PAYMENT_METHOD_LABELS, BALANCE_TYPE_LABELS, PaymentMethod, BalanceType } from '@/types';
 
 const TransactionForm = lazy(() =>
@@ -18,6 +19,9 @@ import {
 import { useDialog } from '@/contexts/DialogContext';
 import { getCategories } from '@/lib/api';
 import { Category } from '@/types';
+
+// Module-level cache: categories are static, no need to re-fetch on every mount
+let _cachedCategories: import('@/types').Category[] = [];
 
 const PAYMENT_ICONS: Record<string, string> = {
   cash: '💵',
@@ -64,7 +68,15 @@ export default function TransactionsPage() {
   const [deletingId, setDeletingId] = useState<number | null>(null);
 
   useEffect(() => {
-    getCategories().then(res => setCategories(res.data.results || res.data)).catch(console.error);
+    if (_cachedCategories.length > 0) {
+      setCategories(_cachedCategories);
+    } else {
+      getCategories().then(res => {
+        const data = res.data.results || res.data;
+        _cachedCategories = data;
+        setCategories(data);
+      }).catch(console.error);
+    }
   }, []);
 
   // Debounce search
@@ -74,6 +86,13 @@ export default function TransactionsPage() {
     }, 400);
     return () => clearTimeout(timer);
   }, [search]);
+
+  const isInitialMount = useCallback(() => {
+    // No filters/search active = initial load, safe to use prefetch cache
+    const f = filters;
+    return !f.type && !f.payment_method && !f.balance_type && !f.category &&
+      !f.date_from && !f.date_to && !f.min_amount && !f.max_amount && !debouncedSearch;
+  }, [filters, debouncedSearch]);
 
   const fetchTransactions = useCallback(() => {
     setLoading(true);
@@ -88,11 +107,17 @@ export default function TransactionsPage() {
     if (filters.max_amount) params.max_amount = filters.max_amount;
     if (debouncedSearch) params.search = debouncedSearch;
 
-    getTransactions(params)
-      .then((res) => setTransactions(res.data.results || res.data))
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const promise: Promise<any> = (isInitialMount() && prefetchCache.transactions)
+      ? prefetchCache.transactions
+      : getTransactions(params);
+    if (isInitialMount()) prefetchCache.transactions = undefined;
+
+    promise
+      .then((res) => { if (res) setTransactions(res.data?.results ?? res.data ?? []); })
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, [filters, debouncedSearch]);
+  }, [filters, debouncedSearch, isInitialMount]);
 
   useEffect(() => {
     fetchTransactions();

@@ -4,6 +4,7 @@ import { useEffect, useState, lazy, Suspense } from 'react';
 import { useRouter } from 'next/navigation';
 import { getDashboard, getCompanies } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
+import { prefetchCache } from '@/contexts/AuthContext';
 import { DashboardData, Company, FINANCE_ACCOUNT_TYPE_LABELS, FinanceAccountType } from '@/types';
 import { formatRupiah, formatDate, profilePhotoUrl } from '@/lib/utils';
 import { TrendingDown, Wallet, Building2, User, ArrowUpRight, ArrowDownRight, ChevronRight, Plus, ChevronDown } from 'lucide-react';
@@ -45,13 +46,18 @@ export default function DashboardPage() {
     const savedId = localStorage.getItem('activeCompanyId') || '';
     setActiveCompanyId(savedId);
 
-    Promise.all([
-      getDashboard(),
-      getCompanies()
-    ])
+    // Use prefetch promises started in AuthContext (runs parallel with auth check)
+    // Fall back to fresh fetch if cache missed (e.g. direct page load without login)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const dashPromise: Promise<any> = prefetchCache.dashboard ?? getDashboard();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const compPromise: Promise<any> = prefetchCache.companies ?? getCompanies();
+    prefetchCache.clear();
+
+    Promise.all([dashPromise, compPromise])
       .then(([resDash, resComp]) => {
-        setData(resDash.data);
-        setCompanies(resComp.data.results || resComp.data);
+        if (resDash) setData(resDash.data);
+        if (resComp) setCompanies(resComp.data?.results ?? resComp.data ?? []);
       })
       .catch(console.error)
       .finally(() => setLoading(false));

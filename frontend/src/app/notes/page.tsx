@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import { Note, NoteCategory } from '@/types';
 import { 
@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { SectionLoading } from '@/components/ui/SectionLoading';
 import { useDialog } from '@/contexts/DialogContext';
+import { prefetchCache } from '@/contexts/AuthContext';
 import { CalendarView } from '@/components/notes/CalendarView';
 
 import 'react-quill-new/dist/quill.snow.css';
@@ -70,9 +71,20 @@ export default function NotesPage() {
   const [noteCategory, setNoteCategory] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
 
+  const _prefetchUsed = useRef(false);
   useEffect(() => {
-    fetchCategories();
-  }, []);
+    if (!_prefetchUsed.current && prefetchCache.noteCategories) {
+      _prefetchUsed.current = true;
+      setLoading(true);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (prefetchCache.noteCategories as Promise<any>).then((res) => {
+        if (res) setCategories(res.data?.results ?? res.data ?? []);
+      }).catch(console.error).finally(() => setLoading(false));
+      prefetchCache.noteCategories = undefined;
+    } else {
+      fetchCategories();
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (selectedCategory) {

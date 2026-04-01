@@ -728,7 +728,7 @@ def dashboard(request):
     has_personal_accounts = any(a.balance_type == 'personal' for a in accounts_list)
     has_office_accounts = any(a.balance_type == 'office' for a in accounts_list)
 
-    return Response({
+    response = Response({
         'total_income': str(total_income),
         'total_expense': str(total_expense),
         'balance': str(total_account_balance if has_accounts else total_income - total_expense),
@@ -740,6 +740,8 @@ def dashboard(request):
         'monthly_trend': monthly_trend,
         'daily_trend': daily_trend,
     })
+    response['Cache-Control'] = 'private, max-age=30'
+    return response
 
 
 # ==================== USER SETTINGS ====================
