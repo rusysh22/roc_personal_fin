@@ -9,7 +9,7 @@ from django.contrib.auth import authenticate
 from django.contrib.auth.models import User
 from django.core.mail import send_mail
 from django.conf import settings
-from django.db.models import Sum, Q, Case, When, Value, F, Subquery, OuterRef, DecimalField
+from django.db.models import Sum, Q, Value, DecimalField
 from django.db.models.functions import TruncMonth, TruncDate, Coalesce
 from django.http import HttpResponse
 from django.utils import timezone
@@ -469,34 +469,9 @@ def get_company_create_kwargs(request):
     return {'company_id': company_id} if company_id else {'company_id': None}
 
 
-def _account_tx_subquery(tx_type):
-    """Subquery to sum transactions of a given type for a finance account,
-    respecting balance_date if set."""
-    return Coalesce(
-        Subquery(
-            Transaction.objects.filter(
-                finance_account=OuterRef('pk'),
-                type=tx_type,
-            ).filter(
-                # Include all tx if no balance_date, or only tx >= balance_date
-                Q(finance_account__balance_date__isnull=True) | Q(date__gte=OuterRef('balance_date'))
-            ).values('finance_account').annotate(
-                total=Sum('amount')
-            ).values('total')[:1],
-            output_field=DecimalField(),
-        ),
-        Value(0),
-        output_field=DecimalField(),
-    )
-
-
 def annotate_account_balance(qs):
-    """Annotate FinanceAccount queryset with computed_balance in a single query.
-    Avoids N+1 from the current_balance property.
-    """
-    return qs.annotate(
-        computed_balance=F('initial_balance') + _account_tx_subquery('income') - _account_tx_subquery('expense')
-    )
+    """Pass-through; current_balance property handles balance_date logic in Python."""
+    return qs
 
 class CategoryViewSet(viewsets.ModelViewSet):
     serializer_class = CategorySerializer
@@ -705,20 +680,16 @@ def dashboard(request):
 
     recent_transactions = transactions.select_related('category', 'finance_account').order_by('-date', '-created_at')[:5]
 
-    # Annotate accounts with computed_balance in a single query (no N+1)
-    accounts_qs = annotate_account_balance(
+    accounts_list = list(
         FinanceAccount.objects.filter(**get_company_filter_kwargs(request), is_active=True)
     )
-    # Evaluate once, reuse the list
-    accounts_list = list(accounts_qs)
     accounts_data = FinanceAccountSerializer(accounts_list, many=True).data
 
-    # Calculate saldo from annotated balances (no extra queries)
     personal_account_balance = sum(
-        acc.computed_balance for acc in accounts_list if acc.balance_type == 'personal' and acc.include_in_dashboard
+        acc.current_balance for acc in accounts_list if acc.balance_type == 'personal' and acc.include_in_dashboard
     )
     office_account_balance = sum(
-        acc.computed_balance for acc in accounts_list if acc.balance_type == 'office' and acc.include_in_dashboard
+        acc.current_balance for acc in accounts_list if acc.balance_type == 'office' and acc.include_in_dashboard
     )
     total_account_balance = personal_account_balance + office_account_balance
     has_accounts = len(accounts_list) > 0

@@ -66,9 +66,6 @@ class FinanceAccountSerializer(serializers.ModelSerializer):
         read_only_fields = ['created_at', 'updated_at']
 
     def get_current_balance(self, obj):
-        # Use annotated value if available (optimized), else fall back to property
-        if hasattr(obj, 'computed_balance') and obj.computed_balance is not None:
-            return str(obj.computed_balance)
         return str(obj.current_balance)
 
 
@@ -112,6 +109,7 @@ class NoteSerializer(serializers.ModelSerializer):
 class TransactionSerializer(serializers.ModelSerializer):
     category_name = serializers.CharField(source='category.name', read_only=True)
     finance_account_name = serializers.CharField(source='finance_account.name', read_only=True)
+    company_name = serializers.CharField(source='company.name', read_only=True)
 
     class Meta:
         model = Transaction
