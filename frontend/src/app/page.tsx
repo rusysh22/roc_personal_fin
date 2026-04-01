@@ -88,7 +88,7 @@ export default function DashboardPage() {
         <div className="w-16 h-16 rounded-full bg-red-50 dark:bg-red-900/20 flex items-center justify-center">
           <TrendingDown className="text-red-400" size={28} />
         </div>
-        <p className="text-sm text-center" style={{ color: 'var(--color-text-secondary)' }}>Gagal memuat data. Pastikan backend berjalan di localhost:8000.</p>
+        <p className="text-sm text-center" style={{ color: 'var(--color-text-secondary)' }}>Gagal memuat data. Pastikan backend berjalan di server. hubungi cintamu ❤️🥰😍</p>
       </div>
     );
   }
