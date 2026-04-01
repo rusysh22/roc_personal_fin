@@ -640,6 +640,14 @@ class BudgetViewSet(viewsets.ModelViewSet):
 
 
 @api_view(['GET'])
+@permission_classes([AllowAny])
+@authentication_classes([])
+def ping(_request):
+    """Lightweight keep-alive endpoint for Vercel cold start prevention."""
+    return Response({'status': 'ok'})
+
+
+@api_view(['GET'])
 @authentication_classes(API_AUTH)
 def dashboard(request):
     today = date.today()

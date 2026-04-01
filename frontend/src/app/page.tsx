@@ -331,7 +331,7 @@ export default function DashboardPage() {
         <div className="mobile-card animate-fade-in-up" style={{ animationDelay: '240ms', opacity: 0 }}>
           <div className="flex items-center justify-between px-4 pt-4 pb-3">
             <h3 className="text-section-title" style={{ color: 'var(--color-text-card-title)' }}>Transaksi Terakhir</h3>
-            <Link href="/transactions" className="flex items-center gap-1 text-[11px] font-semibold touch-feedback py-1" style={{ color: 'var(--color-primary)' }}>
+            <Link href="/transactions" prefetch={false} className="flex items-center gap-1 text-[11px] font-semibold touch-feedback py-1" style={{ color: 'var(--color-primary)' }}>
               Lihat semua <ChevronRight size={13} />
             </Link>
           </div>

@@ -24,6 +24,7 @@ export function BottomNav() {
           <Link
             key={item.href}
             href={item.href}
+            prefetch={false}
             className={cn('bottom-nav-item', isActive && 'active')}
             aria-current={isActive ? 'page' : undefined}
             aria-label={item.label}

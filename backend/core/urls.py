@@ -34,4 +34,6 @@ urlpatterns = [
     path('settings/', views.user_settings_view, name='user-settings'),
     # Export
     path('export/csv/', views.export_transactions_csv, name='export-csv'),
+    # Keep-alive ping for Vercel cold start prevention
+    path('ping/', views.ping, name='ping'),
 ]
