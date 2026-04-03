@@ -3,19 +3,19 @@ import random
 import calendar
 from datetime import date, timedelta
 from decimal import Decimal
-from io import StringIO
+from dateutil.relativedelta import relativedelta
 
 from django.contrib.auth import authenticate
 from django.contrib.auth.models import User
 from django.core.mail import send_mail
 from django.conf import settings
-from django.db.models import Sum, Q, Value, DecimalField, F
+from django.db.models import Sum, Q, Value, DecimalField, F, Count
 from django.db.models.functions import TruncMonth, TruncDate, Coalesce
 from django.http import HttpResponse
 from django.utils import timezone
 from rest_framework import viewsets, status
 from rest_framework.decorators import api_view, authentication_classes, permission_classes
-from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 
 from .authentication import JWTAuthentication, generate_access_token, generate_refresh_token, decode_token
@@ -81,7 +81,7 @@ class NoteCategoryViewSet(viewsets.ModelViewSet):
     authentication_classes = API_AUTH
 
     def get_queryset(self):
-        return NoteCategory.objects.filter(**get_company_filter_kwargs(self.request))
+        return NoteCategory.objects.filter(**get_company_filter_kwargs(self.request)).annotate(note_count=Count('notes'))
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user, **get_company_create_kwargs(self.request))
@@ -347,10 +347,8 @@ def auth_forgot_password(request):
             recipient_list=[email],
             fail_silently=False,
         )
-    except Exception as e:
-        # In development, print OTP to console
-        print(f"[OTP] Code for {email}: {code}")
-        print(f"[OTP] Email send failed: {e}")
+    except Exception:
+        pass  # Email send failed silently; user will not receive OTP
 
     return Response({'message': 'Jika email terdaftar, kode OTP akan dikirim'})
 
@@ -452,17 +450,24 @@ def get_company_filter_kwargs(request):
     """Return filter kwargs for company-aware queries.
     If a company is selected: filter by company only (all members see shared data).
     If no company: filter by user only (personal data).
+    Result is cached on the request object to avoid repeated DB hits per request.
     """
+    cached = getattr(request, '_company_filter_cache', None)
+    if cached is not None:
+        return cached
+
     company_id = request.headers.get('X-Company-Id')
     if company_id:
-        # Verify the user is a member of this company
         is_member = CompanyMember.objects.filter(
             company_id=company_id, user=request.user
         ).exists()
         if is_member:
-            return {'company_id': company_id}
-        # Not a member — fall back to personal data
-    return {'user': request.user, 'company__isnull': True}
+            result = {'company_id': company_id}
+            request._company_filter_cache = result
+            return result
+    result = {'user': request.user, 'company__isnull': True}
+    request._company_filter_cache = result
+    return result
 
 def get_company_create_kwargs(request):
     company_id = request.headers.get('X-Company-Id')
@@ -505,7 +510,7 @@ class TransactionViewSet(viewsets.ModelViewSet):
     authentication_classes = API_AUTH
 
     def get_queryset(self):
-        qs = Transaction.objects.filter(**get_company_filter_kwargs(self.request)).select_related('category', 'finance_account')
+        qs = Transaction.objects.filter(**get_company_filter_kwargs(self.request)).select_related('category', 'finance_account', 'company')
         params = self.request.query_params
 
         if params.get('type'):
@@ -536,9 +541,6 @@ class TransactionViewSet(viewsets.ModelViewSet):
         # Installment auto-generation logic
         installments = transaction.installments
         if installments > 1 and transaction.type == 'expense' and transaction.payment_method == 'credit_card':
-            from dateutil.relativedelta import relativedelta
-            from decimal import Decimal
-            
             total_amount = transaction.amount
             # Split amount among installments
             installment_amount = (total_amount / Decimal(str(installments))).quantize(Decimal('0.01'))
@@ -600,31 +602,34 @@ class BudgetViewSet(viewsets.ModelViewSet):
         month = int(params.get('month', date.today().month))
         year = int(params.get('year', date.today().year))
 
-        budgets = []
         today = date.today()
         days_in_month = calendar.monthrange(year, month)[1]
+        company_filter = get_company_filter_kwargs(request)
 
-        for budget in queryset:
-            spent = Transaction.objects.filter(
-                **get_company_filter_kwargs(request),
-                category=budget.category,
+        # Single aggregated query for monthly spend per category (replaces N per-budget queries)
+        monthly_spent_qs = Transaction.objects.filter(
+            **company_filter,
+            type='expense',
+            date__month=month,
+            date__year=year,
+        ).values('category_id').annotate(total=Sum('amount'))
+        monthly_spent = {row['category_id']: row['total'] or Decimal('0') for row in monthly_spent_qs}
+
+        # Single aggregated query for today's spend per category (only for current month)
+        daily_spent_map: dict = {}
+        if month == today.month and year == today.year:
+            daily_qs = Transaction.objects.filter(
+                **company_filter,
                 type='expense',
-                date__month=month,
-                date__year=year,
-            ).aggregate(total=Sum('amount'))['total'] or Decimal('0')
+                date=today,
+            ).values('category_id').annotate(total=Sum('amount'))
+            daily_spent_map = {row['category_id']: row['total'] or Decimal('0') for row in daily_qs}
 
+        budgets = []
+        for budget in queryset:
+            spent = monthly_spent.get(budget.category_id, Decimal('0'))
+            daily_spent = daily_spent_map.get(budget.category_id, Decimal('0'))
             daily_limit = float(budget.amount) / days_in_month
-            daily_spent = Decimal('0')
-            
-            # calculate spent specifically for today if the budget is for the current month
-            if month == today.month and year == today.year:
-                daily_spent = Transaction.objects.filter(
-                    **get_company_filter_kwargs(request),
-                    category=budget.category,
-                    type='expense',
-                    date=today,
-                ).aggregate(total=Sum('amount'))['total'] or Decimal('0')
-
             percentage = float(spent / budget.amount * 100) if budget.amount > 0 else 0
             daily_percentage = float(float(daily_spent) / daily_limit * 100) if daily_limit > 0 else 0
 
@@ -814,7 +819,7 @@ class SavingsGoalViewSet(viewsets.ModelViewSet):
 @authentication_classes(API_AUTH)
 def export_transactions_csv(request):
     """Export all user transactions as CSV."""
-    transactions = Transaction.objects.filter(**get_company_filter_kwargs(request)).select_related('category')
+    transactions = Transaction.objects.filter(**get_company_filter_kwargs(request)).select_related('category', 'finance_account', 'company')
 
     response = HttpResponse(content_type='text/csv')
     response['Content-Disposition'] = f'attachment; filename="transaksi_{request.user.username}_{date.today().isoformat()}.csv"'

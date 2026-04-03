@@ -92,7 +92,7 @@ class CompanyMemberSerializer(serializers.ModelSerializer):
 
 
 class NoteCategorySerializer(serializers.ModelSerializer):
-    note_count = serializers.IntegerField(source='notes.count', read_only=True)
+    note_count = serializers.IntegerField(read_only=True, default=0)
 
     class Meta:
         model = NoteCategory
@@ -139,16 +139,6 @@ class BudgetSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['created_at', 'updated_at']
 
-
-class DashboardSerializer(serializers.Serializer):
-    total_income = serializers.DecimalField(max_digits=15, decimal_places=2)
-    total_expense = serializers.DecimalField(max_digits=15, decimal_places=2)
-    balance = serializers.DecimalField(max_digits=15, decimal_places=2)
-    personal_balance = serializers.DecimalField(max_digits=15, decimal_places=2)
-    office_balance = serializers.DecimalField(max_digits=15, decimal_places=2)
-    recent_transactions = TransactionSerializer(many=True)
-    spending_by_category = serializers.ListField()
-    monthly_trend = serializers.ListField()
 
 
 class UserSettingsSerializer(serializers.ModelSerializer):

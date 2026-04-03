@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback, lazy, Suspense } from 'react';
+import { useEffect, useState, useCallback, useMemo, lazy, Suspense } from 'react';
 import { getTransactions, deleteTransaction } from '@/lib/api';
 import { prefetchCache } from '@/contexts/AuthContext';
 import { Transaction, PAYMENT_METHOD_LABELS, BALANCE_TYPE_LABELS, PaymentMethod, BalanceType } from '@/types';
@@ -160,8 +160,8 @@ export default function TransactionsPage() {
     filters.min_amount,
     filters.max_amount
   ].filter(Boolean).length;
-  const totalIncome = transactions.filter(t => t.type === 'income').reduce((s, t) => s + parseFloat(t.amount), 0);
-  const totalExpense = transactions.filter(t => t.type === 'expense').reduce((s, t) => s + parseFloat(t.amount), 0);
+  const totalIncome = useMemo(() => transactions.filter(t => t.type === 'income').reduce((s, t) => s + parseFloat(t.amount), 0), [transactions]);
+  const totalExpense = useMemo(() => transactions.filter(t => t.type === 'expense').reduce((s, t) => s + parseFloat(t.amount), 0), [transactions]);
 
   return (
     <div className="pb-2">

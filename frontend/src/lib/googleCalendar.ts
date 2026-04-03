@@ -68,9 +68,7 @@ export const signIn = (): Promise<string> => {
 export const signOutGoogle = () => {
   const token = localStorage.getItem('google_access_token');
   if (token) {
-    window.google.accounts.oauth2.revoke(token, () => {
-      console.log('Google token revoked');
-    });
+    window.google.accounts.oauth2.revoke(token, () => {});
   }
   localStorage.removeItem('google_access_token');
   localStorage.removeItem('google_token_expiry');

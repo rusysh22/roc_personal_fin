@@ -152,13 +152,15 @@ class FinanceAccount(models.Model):
 
     @property
     def current_balance(self):
-        from django.db.models import Sum
+        from django.db.models import Sum, Q
         tx = self.transactions.all()
         if self.balance_date:
             tx = tx.filter(date__gte=self.balance_date)
-        income = tx.filter(type='income').aggregate(t=Sum('amount'))['t'] or 0
-        expense = tx.filter(type='expense').aggregate(t=Sum('amount'))['t'] or 0
-        return self.initial_balance + income - expense
+        agg = tx.aggregate(
+            income=Sum('amount', filter=Q(type='income')),
+            expense=Sum('amount', filter=Q(type='expense')),
+        )
+        return self.initial_balance + (agg['income'] or 0) - (agg['expense'] or 0)
 
 
 class Transaction(models.Model):

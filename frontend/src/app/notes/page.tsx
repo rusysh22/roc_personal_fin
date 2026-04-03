@@ -1,16 +1,15 @@
 'use client';
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import dynamic from 'next/dynamic';
 import { Note, NoteCategory } from '@/types';
-import { 
+import {
   getNotes, createNote, updateNote, deleteNote,
-  getNoteCategories, createNoteCategory, updateNoteCategory, deleteNoteCategory 
+  getNoteCategories, createNoteCategory, updateNoteCategory, deleteNoteCategory
 } from '@/lib/api';
-import { 
-  FileText, Plus, Loader2, Trash2, Check, Search, 
-  Calendar as CalendarIcon, X, ArrowLeft, MoreVertical,
-  Briefcase, Heart, Home, Settings, Info, Tag, CalendarDays, RefreshCw, Cloud
+import {
+  FileText, Plus, Loader2, Trash2, Check, Search,
+  Calendar as CalendarIcon, X, ArrowLeft,
+  Briefcase, Heart, Home, Settings, Info, Tag, CalendarDays
 } from 'lucide-react';
 import { SectionLoading } from '@/components/ui/SectionLoading';
 import { useDialog } from '@/contexts/DialogContext';
@@ -19,26 +18,44 @@ import { CalendarView } from '@/components/notes/CalendarView';
 
 import 'react-quill-new/dist/quill.snow.css';
 
-// Dynamically import Quill to avoid SSR issues
-const ReactQuill = dynamic(() => import('react-quill-new'), { ssr: false, loading: () => <div className="h-64 flex items-center justify-center bg-gray-50 rounded-2xl animate-pulse"><Loader2 className="animate-spin text-gray-400" /></div> });
+// Lazy-load ReactQuill (SSR-safe): resolved at module level so all renders share the same component.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let ReactQuill: any = null;
+if (typeof window !== 'undefined') {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  ReactQuill = require('react-quill-new').default;
+}
 
-const modules = {
-  toolbar: [
-    [{ header: [1, 2, 3, false] }],
-    ['bold', 'italic', 'underline', 'strike'],
-    [{ list: 'ordered' }, { list: 'bullet' }, { list: 'check' }],
-    [{ color: [] }, { background: [] }],
-    ['link'],
-    ['clean']
-  ]
-};
+// Compress image to base64 with max width/quality to keep note size manageable
+function compressImageToBase64(file: File, maxWidth = 800): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const scale = img.width > maxWidth ? maxWidth / img.width : 1;
+        canvas.width = img.width * scale;
+        canvas.height = img.height * scale;
+        const ctx = canvas.getContext('2d')!;
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL('image/jpeg', 0.75));
+      };
+      img.onerror = reject;
+      img.src = e.target?.result as string;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
 
 const formats = [
   'header',
   'bold', 'italic', 'underline', 'strike',
-  'list',
+  'list', 'indent',
   'color', 'background',
-  'link'
+  'link',
+  'image',
 ];
 
 const CATEGORY_ICONS: Record<string, any> = {
@@ -70,6 +87,249 @@ export default function NotesPage() {
   const [content, setContent] = useState('');
   const [noteCategory, setNoteCategory] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
+  const [datePicker, setDatePicker] = useState<{ index: number; cmdLen: number } | null>(null);
+  const datePickerRef = useRef<HTMLInputElement>(null);
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const quillEditorRef = useRef<any>(null);
+  const quillContainerRef = useRef<HTMLDivElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+
+  // Get the underlying Quill editor instance via react-quill-new ref
+  const getEditor = useCallback(() => {
+    if (quillEditorRef.current) return quillEditorRef.current;
+    return null;
+  }, []);
+
+  const [editorReady, setEditorReady] = useState(false);
+
+  // Callback ref for ReactQuill — captures the Quill instance once mounted
+  const quillRefCallback = useCallback((el: any) => {
+    if (el) {
+      quillEditorRef.current = el.getEditor();
+      setEditorReady(true);
+    } else {
+      quillEditorRef.current = null;
+      setEditorReady(false);
+    }
+  }, []);
+
+  // ---- Image Resize ----
+  const resizeStateRef = useRef<{
+    img: HTMLImageElement;
+    startX: number;
+    startWidth: number;
+    overlay: HTMLDivElement;
+    handle: HTMLDivElement;
+  } | null>(null);
+
+  const removeResizeOverlay = useCallback(() => {
+    resizeStateRef.current?.overlay.remove();
+    resizeStateRef.current = null;
+  }, []);
+
+  const showResizeOverlay = useCallback((img: HTMLImageElement) => {
+    // Remove any existing overlay first
+    removeResizeOverlay();
+
+    const overlay = document.createElement('div');
+    overlay.className = 'img-resize-overlay';
+    overlay.style.cssText = `
+      position:absolute; pointer-events:none; box-sizing:border-box;
+      border:2px solid #6366f1; border-radius:6px;
+    `;
+
+    // Resize handle (bottom-right corner)
+    const handle = document.createElement('div');
+    handle.className = 'img-resize-handle';
+    handle.style.cssText = `
+      position:absolute; right:-6px; bottom:-6px;
+      width:16px; height:16px; background:#6366f1; border-radius:50%;
+      cursor:se-resize; pointer-events:all; border:2px solid white;
+      box-shadow:0 1px 4px rgba(0,0,0,0.3); touch-action:none;
+    `;
+    overlay.appendChild(handle);
+
+    // Position overlay on top of image
+    const positionOverlay = () => {
+      const rect = img.getBoundingClientRect();
+      const containerRect = quillContainerRef.current!.getBoundingClientRect();
+      overlay.style.left = `${rect.left - containerRect.left + quillContainerRef.current!.scrollLeft}px`;
+      overlay.style.top = `${rect.top - containerRect.top + quillContainerRef.current!.scrollTop}px`;
+      overlay.style.width = `${rect.width}px`;
+      overlay.style.height = `${rect.height}px`;
+    };
+
+    quillContainerRef.current!.style.position = 'relative';
+    quillContainerRef.current!.appendChild(overlay);
+    positionOverlay();
+
+    const startResize = (clientX: number) => {
+      resizeStateRef.current = {
+        img, overlay, handle,
+        startX: clientX,
+        startWidth: img.getBoundingClientRect().width,
+      };
+    };
+
+    const doResize = (clientX: number) => {
+      const state = resizeStateRef.current;
+      if (!state) return;
+      const dx = clientX - state.startX;
+      const newWidth = Math.max(40, state.startWidth + dx);
+      state.img.style.width = `${newWidth}px`;
+      state.img.style.height = 'auto';
+      positionOverlay();
+    };
+
+    // Mouse drag
+    const onMouseMove = (e: MouseEvent) => doResize(e.clientX);
+    const onMouseUp = () => {
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+    };
+
+    handle.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      startResize(e.clientX);
+      document.addEventListener('mousemove', onMouseMove);
+      document.addEventListener('mouseup', onMouseUp);
+    });
+
+    // Touch drag (mobile)
+    const onTouchMove = (e: TouchEvent) => { e.preventDefault(); doResize(e.touches[0].clientX); };
+    const onTouchEnd = () => {
+      document.removeEventListener('touchmove', onTouchMove);
+      document.removeEventListener('touchend', onTouchEnd);
+    };
+
+    handle.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      startResize(e.touches[0].clientX);
+      document.addEventListener('touchmove', onTouchMove, { passive: false });
+      document.addEventListener('touchend', onTouchEnd);
+    });
+
+    resizeStateRef.current = { img, overlay, handle, startX: 0, startWidth: img.width };
+  }, [removeResizeOverlay]);
+
+  // Attach click listener to images inside the editor
+  useEffect(() => {
+    if (!isEditing) return;
+    // Wait for Quill to mount
+    const timer = setTimeout(() => {
+      const editorEl = quillContainerRef.current?.querySelector('.ql-editor');
+      if (!editorEl) return;
+
+      const handleImgClick = (e: Event) => {
+        const target = e.target as HTMLElement;
+        if (target.tagName === 'IMG') {
+          showResizeOverlay(target as HTMLImageElement);
+        } else {
+          removeResizeOverlay();
+        }
+      };
+
+      editorEl.addEventListener('click', handleImgClick);
+      return () => editorEl.removeEventListener('click', handleImgClick);
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [isEditing, showResizeOverlay, removeResizeOverlay]);
+
+  // Insert image into quill at current cursor position
+  const insertImage = useCallback(async (file: File) => {
+    if (!file.type.startsWith('image/')) return;
+    try {
+      const base64 = await compressImageToBase64(file);
+      const editor = getEditor();
+      if (!editor) return;
+      const range = editor.getSelection(true);
+      editor.insertEmbed(range.index, 'image', base64);
+      editor.setSelection(range.index + 1);
+    } catch {
+      // ignore
+    }
+  }, [getEditor]);
+
+  // Handle image upload via toolbar button — called by Quill handler
+  const handleImageUpload = useCallback(() => {
+    imageInputRef.current?.click();
+  }, []);
+
+  const handleDatePicked = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value; // yyyy-mm-dd
+    if (!val || !datePicker) return;
+    const [y, m, d] = val.split('-').map(Number);
+    const date = new Date(y, m - 1, d);
+    const formatted = new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }).format(date);
+    const editor = getEditor();
+    if (editor) {
+      editor.deleteText(datePicker.index, datePicker.cmdLen, 'user');
+      editor.insertText(datePicker.index, formatted, 'user');
+      editor.setSelection(datePicker.index + formatted.length, 0, 'user');
+    }
+    setDatePicker(null);
+    e.target.value = '';
+  }, [datePicker, getEditor]);
+
+  // Quill modules — defined inside component to capture handler refs
+  const quillModules = useMemo(() => ({
+    toolbar: {
+      container: [
+        [{ header: [1, 2, 3, false] }],
+        ['bold', 'italic', 'underline', 'strike'],
+        [{ list: 'ordered' }, { list: 'bullet' }, { list: 'check' }],
+        [{ color: [] }, { background: [] }],
+        ['link', 'image'],
+        ['clean'],
+      ],
+      handlers: {
+        image: handleImageUpload,
+      },
+    },
+    clipboard: {
+      matchVisual: false,
+    },
+  }), [handleImageUpload]);
+
+  // Attach slash-command listener directly on Quill's text-change event
+  useEffect(() => {
+    if (!isEditing) return;
+    const editor = quillEditorRef.current;
+    if (!editor) return;
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const onTextChange = (_delta: any, _old: any, source: string) => {
+      if (source !== 'user') return;
+      const text = editor.getText();
+      const todayMatch = /\/today/i.exec(text);
+      const dateMatch = /\/date/i.exec(text);
+
+      if (todayMatch) {
+        const cmdStart = todayMatch.index;
+        const cmdLen = todayMatch[0].length;
+        const formatted = new Intl.DateTimeFormat('id-ID', {
+          day: 'numeric', month: 'long', year: 'numeric',
+        }).format(new Date());
+        setTimeout(() => {
+          editor.deleteText(cmdStart, cmdLen, 'user');
+          editor.insertText(cmdStart, formatted, 'user');
+          editor.setSelection(cmdStart + formatted.length, 0, 'user');
+        }, 0);
+      } else if (dateMatch) {
+        const cmdStart = dateMatch.index;
+        const cmdLen = dateMatch[0].length;
+        setDatePicker({ index: cmdStart, cmdLen });
+        setTimeout(() => datePickerRef.current?.showPicker?.(), 50);
+      }
+    };
+
+    editor.on('text-change', onTextChange);
+    return () => { editor.off('text-change', onTextChange); };
+  }, [isEditing, editorReady]);
 
   const _prefetchUsed = useRef(false);
   useEffect(() => {
@@ -236,7 +496,10 @@ export default function NotesPage() {
     <div className="pb-24">
       {/* Editor Fullscreen Modal */}
       {isEditing && (
-        <div className="fixed inset-0 z-[60] flex flex-col bg-[var(--color-bg-app)] animate-slide-up">
+        <div className="fixed inset-0 z-[60] flex flex-col bg-[var(--color-bg-app)] animate-slide-up" onClick={(e) => {
+          // Dismiss resize overlay when clicking outside an image
+          if ((e.target as HTMLElement).tagName !== 'IMG') removeResizeOverlay();
+        }}>
           {/* Header */}
           <div className="flex items-center justify-between p-4 border-b" style={{ borderColor: 'var(--color-border-card)', background: 'var(--color-bg-app)' }}>
             <div className="flex items-center gap-3">
@@ -294,16 +557,56 @@ export default function NotesPage() {
               ))}
             </div>
 
-            <div className="flex-[1] quill-container min-h-[300px]">
-              <ReactQuill 
-                theme="snow" 
-                value={content} 
-                onChange={setContent} 
-                modules={modules}
-                formats={formats}
-                placeholder="Tulis sesuatu di sini..."
-                className="h-full pb-10"
-              />
+            {/* Hidden file input for image upload */}
+            <input
+              ref={imageInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={async (e) => {
+                const file = e.target.files?.[0];
+                if (file) await insertImage(file);
+                e.target.value = '';
+              }}
+            />
+            {/* Hidden date input for /date slash command */}
+            <input
+              ref={datePickerRef}
+              type="date"
+              className="hidden"
+              onChange={handleDatePicked}
+            />
+
+            <div
+              ref={quillContainerRef}
+              className="flex-[1] quill-container min-h-[300px]"
+              onPaste={async (e) => {
+                // Handle image paste from clipboard (Ctrl+V)
+                const items = Array.from(e.clipboardData?.items ?? []);
+                const imageItem = items.find(i => i.type.startsWith('image/'));
+                if (imageItem) {
+                  e.preventDefault();
+                  const file = imageItem.getAsFile();
+                  if (file) await insertImage(file);
+                }
+              }}
+            >
+              {ReactQuill ? (
+                <ReactQuill
+                  ref={quillRefCallback}
+                  theme="snow"
+                  value={content}
+                  onChange={setContent}
+                  modules={quillModules}
+                  formats={formats}
+                  placeholder="Tulis sesuatu di sini..."
+                  className="h-full pb-10"
+                />
+              ) : (
+                <div className="h-64 flex items-center justify-center bg-gray-50 rounded-2xl animate-pulse">
+                  <Loader2 className="animate-spin text-gray-400" />
+                </div>
+              )}
             </div>
           </div>
           
@@ -338,6 +641,8 @@ export default function NotesPage() {
             .dark .ql-fill { fill: var(--color-text-primary) !important; }
             .dark .ql-picker { color: var(--color-text-primary) !important; }
             .dark .ql-picker-options { background-color: var(--color-bg-card) !important; border-color: var(--color-border-card) !important; }
+            /* Image in editor */
+            .quill-container .ql-editor img { max-width: 100%; border-radius: 8px; margin: 4px 0; }
           `}</style>
         </div>
       )}

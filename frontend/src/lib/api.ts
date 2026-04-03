@@ -149,9 +149,6 @@ export const createDebt = (data: Record<string, unknown>) =>
 export const updateDebt = (id: number, data: Record<string, unknown>) =>
   api.put(`/debts/${id}/`, data);
 
-export const patchDebt = (id: number, data: Record<string, unknown>) =>
-  api.patch(`/debts/${id}/`, data);
-
 export const deleteDebt = (id: number) =>
   api.delete(`/debts/${id}/`);
 
@@ -181,9 +178,6 @@ export const createFinanceAccount = (data: Record<string, unknown>) =>
 export const updateFinanceAccount = (id: number, data: Record<string, unknown>) =>
   api.put(`/finance-accounts/${id}/`, data);
 
-export const patchFinanceAccount = (id: number, data: Record<string, unknown>) =>
-  api.patch(`/finance-accounts/${id}/`, data);
-
 export const deleteFinanceAccount = (id: number) =>
   api.delete(`/finance-accounts/${id}/`);
 
@@ -196,7 +190,6 @@ export const deleteCompany = (id: number) => api.delete(`/companies/${id}/`);
 // ========== Company Members ==========
 export const getCompanyMembers = () => api.get('/company-members/');
 export const createCompanyMember = (data: { email: string; company: number; role?: string }) => api.post('/company-members/', data);
-export const updateCompanyMember = (id: number, data: Record<string, unknown>) => api.put(`/company-members/${id}/`, data);
 export const deleteCompanyMember = (id: number) => api.delete(`/company-members/${id}/`);
 
 // ========== Notes ==========

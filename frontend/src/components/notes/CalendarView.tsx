@@ -67,17 +67,9 @@ export function CalendarView() {
       const token = getAccessToken();
       if (token) {
         setGoogleStatus('connected');
-        // Auto sync if connected
-        handleAutoSync();
       }
     });
   }, [fetchPlans]);
-
-  const handleAutoSync = async () => {
-    // Basic auto sync: push any local plans that don't have google_event_id
-    // This is a simplified version of the "auto sync" request
-    // In a real app, you'd want a more robust two-way sync
-  };
 
   const handleSyncAll = async () => {
     if (googleStatus !== 'connected') {
@@ -239,6 +231,8 @@ export function CalendarView() {
     }
   };
 
+  const today = new Date();
+
   return (
     <div className="space-y-6 animate-fade-in-up pb-8">
       {/* Premium Calendar Header */}
@@ -337,7 +331,7 @@ export function CalendarView() {
           {days.map(day => {
             const dayPlans = getPlansForDate(day);
             const dayGoogleEvents = getGoogleEventsForDate(day);
-            const isToday = day === new Date().getDate() && currentDate.getMonth() === new Date().getMonth() && currentDate.getFullYear() === new Date().getFullYear();
+            const isToday = day === today.getDate() && currentDate.getMonth() === today.getMonth() && currentDate.getFullYear() === today.getFullYear();
             
             return (
               <button 
@@ -460,12 +454,12 @@ export function CalendarView() {
           ) : (
             /* Upcoming List (Default View) */
             [
-              ...plans.filter(p => new Date(p.target_date) >= new Date() && !p.is_realized).map(p => ({ ...p, type: 'plan' as const })),
+              ...plans.filter(p => new Date(p.target_date) >= today && !p.is_realized).map(p => ({ ...p, type: 'plan' as const })),
               ...googleEvents.filter(e => {
                 const start = e.start.date || e.start.dateTime;
                 if (!start) return false;
                 const date = new Date(start);
-                return date >= new Date() && !plans.some(p => p.google_event_id === e.id);
+                return date >= today && !plans.some(p => p.google_event_id === e.id);
               }).map(e => ({
                 id: e.id || '',
                 item_name: e.summary,

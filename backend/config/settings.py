@@ -7,7 +7,7 @@ load_dotenv()
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-change-me')
-DEBUG = os.getenv('DEBUG', 'True') == 'True'
+DEBUG = os.getenv('DEBUG', 'False') == 'True'
 ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1,rusydani-niken.vercel.app,.vercel.app,rusydani-niken.roc.web.id,niken.rusydani.my.id,server-niken.rusydani.my.id,.rusydani.my.id').split(',')
 
 INSTALLED_APPS = [

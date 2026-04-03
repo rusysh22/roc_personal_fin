@@ -48,6 +48,15 @@ const PAYMENT_OPTIONS = [
   { value: 'cod', label: 'COD', emoji: '📦' },
 ];
 
+const PAYMENT_TO_ACCOUNT_TYPES: Record<string, string[]> = {
+  cash: ['cash'],
+  bank_transfer: ['bank'],
+  credit_card: ['credit_card'],
+  e_wallet: ['e_wallet'],
+  paylater: ['paylater'],
+  cod: ['cash'],
+};
+
 export function TransactionForm({ onSuccess, onCancel, transaction }: TransactionFormProps) {
   const isEditing = !!transaction;
   const { showAlert } = useDialog();
@@ -104,16 +113,6 @@ export function TransactionForm({ onSuccess, onCancel, transaction }: Transactio
   };
 
   const amountNumber = parseInt(amountStr || '0', 10);
-
-  // Payment Method to Account Type mapping
-  const PAYMENT_TO_ACCOUNT_TYPES: Record<string, string[]> = {
-    cash: ['cash'],
-    bank_transfer: ['bank'],
-    credit_card: ['credit_card'],
-    e_wallet: ['e_wallet'],
-    paylater: ['paylater'],
-    cod: ['cash'],
-  };
 
   const allowedAccountTypes = PAYMENT_TO_ACCOUNT_TYPES[paymentMethod] || [];
   const filteredAccounts = accounts.filter(acc => allowedAccountTypes.includes(acc.type));
